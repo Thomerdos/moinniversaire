@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Est-ce le 18 ?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.5s ease;
+        }
+
+        body.is-18 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body.not-18 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .container {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .emoji {
+            font-size: 6rem;
+            margin-bottom: 1.5rem;
+            animation: bounce 1s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .response {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1.5rem 0;
+        }
+
+        .is-18 .response {
+            color: #667eea;
+        }
+
+        .not-18 .response {
+            color: #f5576c;
+        }
+
+        .date-info {
+            font-size: 1.2rem;
+            color: #666;
+            margin-top: 1.5rem;
+        }
+
+        .countdown {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #888;
+        }
+
+        .anniversary {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #d63031;
+            animation: pulse 2s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .anniversary .hearts {
+            font-size: 1.5rem;
+            margin: 0.5rem 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji" id="emoji">📅</div>
+        <h1>Est-ce le 18 du mois ?</h1>
+        <div class="response" id="response"></div>
+        <div class="date-info" id="dateInfo"></div>
+        <div class="countdown" id="countdown"></div>
+        <div class="anniversary hidden" id="anniversary"></div>
+    </div>
+
+    <script>
+        const COUPLE_START_DATE = new Date(2025, 6, 18); // 18 juillet 2025
+        const ANNIVERSARY_MONTH = 6; // Juillet (0-indexed)
+
+        function getMonthsDifference(startDate, currentDate) {
+            const years = currentDate.getFullYear() - startDate.getFullYear();
+            const months = currentDate.getMonth() - startDate.getMonth();
+            return years * 12 + months;
+        }
+
+        function getDaysUntilNext18(currentDate, currentDay) {
+            if (currentDay < 18) {
+                return 18 - currentDay;
+            }
+            
+            const nextMonth = new Date(
+                currentDate.getFullYear(),
+                currentDate.getMonth() + 1,
+                18
+            );
+            const diff = nextMonth - currentDate;
+            return Math.ceil(diff / (1000 * 60 * 60 * 24));
+        }
+
+        function updateAnniversaryDisplay(now, day, month, year) {
+            const anniversaryEl = document.getElementById('anniversary');
+            
+            if (day !== 18 || now < COUPLE_START_DATE) {
+                anniversaryEl.classList.add('hidden');
+                return;
+            }
+
+            const monthsTogether = getMonthsDifference(COUPLE_START_DATE, now);
+            anniversaryEl.classList.remove('hidden');
+
+            if (month === ANNIVERSARY_MONTH && year >= 2025) {
+                const yearsTogether = year - 2025;
+                
+                if (yearsTogether === 0) {
+                    anniversaryEl.innerHTML = `
+                        <div class="hearts">💕 💖 💕</div>
+                        Aujourd'hui, c'est le début de notre histoire !
+                        <div class="hearts">💕 💖 💕</div>
+                    `;
+                } else {
+                    anniversaryEl.innerHTML = `
+                        <div class="hearts">💕 💖 💕</div>
+                        ${yearsTogether} an${yearsTogether > 1 ? 's' : ''} ensemble !
+                        <br><small style="font-size: 0.9rem;">(${monthsTogether} mois)</small>
+                        <div class="hearts">💕 💖 💕</div>
+                    `;
+                }
+            } else {
+                anniversaryEl.innerHTML = `
+                    <div class="hearts">💕</div>
+                    ${monthsTogether} mois ensemble !
+                    <div class="hearts">💕</div>
+                `;
+            }
+        }
+
+        function updateDateDisplay(now, day, month, year) {
+            const responseEl = document.getElementById('response');
+            const dateInfoEl = document.getElementById('dateInfo');
+            const emojiEl = document.getElementById('emoji');
+            const countdownEl = document.getElementById('countdown');
+            const monthName = now.toLocaleDateString('fr-FR', { month: 'long' });
+
+            if (day === 18) {
+                document.body.className = 'is-18';
+                responseEl.textContent = 'OUI ! 🎉';
+                emojiEl.textContent = '🎊';
+                dateInfoEl.textContent = `Nous sommes le 18 ${monthName} ${year}`;
+                countdownEl.textContent = '';
+            } else {
+                document.body.className = 'not-18';
+                responseEl.textContent = 'Non 😔';
+                emojiEl.textContent = '📆';
+                dateInfoEl.textContent = `Nous sommes le ${day} ${monthName} ${year}`;
+                
+                const daysUntil18 = getDaysUntilNext18(now, day);
+                countdownEl.textContent = `Plus que ${daysUntil18} jour${daysUntil18 > 1 ? 's' : ''} avant le prochain 18 !`;
+            }
+        }
+
+        function checkDate() {
+            const now = new Date();
+            const day = now.getDate();
+            const month = now.getMonth();
+            const year = now.getFullYear();
+
+            updateDateDisplay(now, day, month, year);
+            updateAnniversaryDisplay(now, day, month, year);
+        }
+
+        // Initialisation
+        checkDate();
+        
+        // Vérifier toutes les heures si la date a changé
+        setInterval(checkDate, 3600000);
+    </script>
+</body>
+</html>
