@@ -52,11 +52,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { COUPLE_START_DATE, CHECK_INTERVAL_MS } from '../constants'
+import { computed } from 'vue'
+import { useCurrentDate } from '../composables/useCurrentDate'
+import { COUPLE_START_DATE } from '../constants'
 
-const now = ref(new Date())
-const interval = ref(null)
+const { now } = useCurrentDate()
 
 const hasStarted = computed(() => now.value >= COUPLE_START_DATE)
 
@@ -137,20 +137,5 @@ const daysUntilStart = computed(() => {
   if (hasStarted.value) return 0
   const diff = COUPLE_START_DATE - now.value
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
-})
-
-const updateDate = () => {
-  now.value = new Date()
-}
-
-onMounted(() => {
-  // Vérifier toutes les heures si la date a changé
-  interval.value = setInterval(updateDate, CHECK_INTERVAL_MS)
-})
-
-onUnmounted(() => {
-  if (interval.value) {
-    clearInterval(interval.value)
-  }
 })
 </script>
