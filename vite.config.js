@@ -7,5 +7,6 @@ export default defineConfig({
     UnoCSS(),
     vue(),
   ],
+  // Utilise VITE_BASE_PATH pour les previews PR, sinon '/moinniversaire/' pour la production
   base: process.env.VITE_BASE_PATH || '/moinniversaire/',
 })
