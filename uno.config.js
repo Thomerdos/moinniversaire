@@ -13,6 +13,11 @@ export default defineConfig({
       'pink-gradient-end': '#f5576c',
       'peach-gradient-start': '#ffecd2',
       'peach-gradient-end': '#fcb69f',
+      'mafia-dark': '#1a1a1a',
+      'mafia-red': '#8B0000',
+      'mafia-gold': '#D4AF37',
+      'mafia-black': '#000000',
+      'mafia-blood': '#A52A2A',
     },
   },
   shortcuts: {
