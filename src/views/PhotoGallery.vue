@@ -19,19 +19,12 @@
 
     <!-- Panzoom gallery -->
     <div v-else class="gallery-viewport" ref="viewportRef">
-      <!-- Instructions overlay -->
-      <div class="instructions-overlay" :class="{ 'fade-out': instructionsHidden }">
+      <!-- Instructions overlay - desktop only -->
+      <div v-if="!isMobile" class="instructions-overlay" :class="{ 'fade-out': instructionsHidden }">
         <div class="instructions-content">
-          <template v-if="isMobile">
-            <p>👆 Glisser pour explorer</p>
-            <p>🤏 Pincer pour zoomer</p>
-            <p>👆 Toucher pour agrandir</p>
-          </template>
-          <template v-else>
-            <p>🖱️ Glisser pour explorer</p>
-            <p>🔍 Molette pour zoomer</p>
-            <p>👆 Cliquer pour agrandir</p>
-          </template>
+          <p>🖱️ Glisser pour explorer</p>
+          <p>🔍 Molette pour zoomer</p>
+          <p>👆 Cliquer pour agrandir</p>
         </div>
       </div>
 
@@ -45,7 +38,7 @@
       <!-- Panzoom canvas -->
       <div class="panzoom-canvas" ref="canvasRef">
         <div 
-          v-for="(photo, index) in scatteredPhotos" 
+          v-for="(photo, index) in gridPhotos" 
           :key="photo.id"
           class="photo-frame"
           :style="photo.style"
@@ -97,60 +90,47 @@ const shuffleArray = (array) => {
   return shuffled
 }
 
-// Generate scattered positions for photos - responsive sizes
-const scatteredPhotos = computed(() => {
+// Generate tight grid layout where photos touch
+const gridPhotos = computed(() => {
   if (photos.value.length === 0) return []
   
   const shuffled = shuffleArray(photos.value)
-  const canvasSize = isMobile.value ? 2000 : 3000
-  const photoSize = isMobile.value ? 180 : 280
-  const padding = isMobile.value ? 40 : 60
-  
-  // Create a grid-based scattered layout
-  const cols = Math.ceil(Math.sqrt(shuffled.length * 1.5))
-  const rows = Math.ceil(shuffled.length / cols)
-  const cellWidth = (canvasSize - padding * 2) / cols
-  const cellHeight = (canvasSize - padding * 2) / rows
+  const photoSize = isMobile.value ? 150 : 220
+  const cols = isMobile.value ? 4 : 5
   
   return shuffled.map((photo, index) => {
     const col = index % cols
     const row = Math.floor(index / cols)
     
-    // Base position in grid
-    const baseX = padding + col * cellWidth + cellWidth / 2
-    const baseY = padding + row * cellHeight + cellHeight / 2
-    
-    // Add randomness
-    const randomX = (Math.random() - 0.5) * cellWidth * 0.5
-    const randomY = (Math.random() - 0.5) * cellHeight * 0.5
-    const rotation = (Math.random() - 0.5) * 16 // -8 to 8 degrees
-    
     // Determine size based on aspect ratio
     const ratio = photo.width / photo.height
     let width, height
     if (ratio > 1.2) {
-      // Landscape
-      width = photoSize * 1.3
-      height = photoSize * 0.9
+      // Landscape - wider
+      width = photoSize * 1.4
+      height = photoSize
     } else if (ratio < 0.85) {
-      // Portrait
-      width = photoSize * 0.85
-      height = photoSize * 1.25
+      // Portrait - taller
+      width = photoSize
+      height = photoSize * 1.4
     } else {
       // Square-ish
       width = photoSize
       height = photoSize
     }
     
+    // Position in tight grid (photos touching)
+    const x = col * photoSize
+    const y = row * photoSize
+    
     return {
       ...photo,
       style: {
-        left: `${baseX + randomX - width / 2}px`,
-        top: `${baseY + randomY - height / 2}px`,
+        left: `${x}px`,
+        top: `${y}px`,
         width: `${width}px`,
         height: `${height}px`,
-        transform: `rotate(${rotation}deg)`,
-        zIndex: Math.floor(Math.random() * 10)
+        zIndex: 1
       }
     }
   })
@@ -182,13 +162,13 @@ const loadPhotos = async () => {
 const initPanzoom = () => {
   if (!canvasRef.value || !viewportRef.value) return
   
-  const canvasSize = isMobile.value ? 2000 : 3000
-  const startOffset = isMobile.value ? -500 : -750
+  // Start centered on the grid
+  const startOffset = isMobile.value ? -200 : -300
   
   panzoomInstance = Panzoom(canvasRef.value, {
     maxScale: 4,
-    minScale: 0.2,
-    startScale: isMobile.value ? 0.6 : 0.5,
+    minScale: 0.3,
+    startScale: isMobile.value ? 1 : 0.8,
     startX: startOffset,
     startY: startOffset,
     cursor: 'grab',
@@ -233,7 +213,7 @@ const resetZoom = () => {
 const openLightbox = async (index) => {
   await nextTick()
   
-  const items = scatteredPhotos.value.map(photo => ({
+  const items = gridPhotos.value.map(photo => ({
     src: photo.src,
     width: photo.width || 1200,
     height: photo.height || 900,
@@ -370,33 +350,26 @@ onUnmounted(() => {
 /* Panzoom canvas */
 .panzoom-canvas {
   position: relative;
-  width: 3000px;
-  height: 3000px;
+  width: 2000px;
+  height: 2000px;
   transform-origin: center center;
 }
 
-/* Photo frame */
+/* Photo frame - tight grid, no gaps */
 .photo-frame {
   position: absolute;
-  border-radius: 6px;
   overflow: hidden;
-  box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.6),
-    0 0 0 3px rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              box-shadow 0.3s ease;
-  background: #1a1a2e;
+              box-shadow 0.3s ease,
+              z-index 0s;
   -webkit-tap-highlight-color: transparent;
 }
 
 .photo-frame:hover,
 .photo-frame:active {
-  transform: scale(1.08) !important;
-  box-shadow: 
-    0 15px 50px rgba(0, 0, 0, 0.8),
-    0 0 0 3px rgba(102, 126, 234, 0.5),
-    0 0 30px rgba(102, 126, 234, 0.25);
+  transform: scale(1.1) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
   z-index: 1000 !important;
 }
 
@@ -444,8 +417,8 @@ onUnmounted(() => {
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .panzoom-canvas {
-    width: 2000px;
-    height: 2000px;
+    width: 1200px;
+    height: 1200px;
   }
   
   .zoom-controls {
@@ -465,19 +438,6 @@ onUnmounted(() => {
     font-size: 1.1rem;
   }
   
-  .instructions-content {
-    padding: 1.25rem 1.5rem;
-  }
-  
-  .instructions-content p {
-    font-size: 0.9rem;
-    margin: 0.3rem 0;
-  }
-  
-  .photo-frame {
-    border-radius: 4px;
-  }
-  
   /* Hide overlay on mobile - tap to view */
   .photo-overlay {
     display: none;
@@ -490,14 +450,6 @@ onUnmounted(() => {
     width: 40px;
     height: 40px;
     font-size: 1.2rem;
-  }
-  
-  .instructions-content {
-    padding: 1rem 1.25rem;
-  }
-  
-  .instructions-content p {
-    font-size: 0.85rem;
   }
 }
 </style>
