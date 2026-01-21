@@ -10,6 +10,7 @@
     "optimize-images": "node scripts/optimize-images.js"
   },
   "dependencies": {
+    "@panzoom/panzoom": "^4.6.1",
     "@vueuse/core": "^14.1.0",
     "photoswipe": "^5.4.4",
     "pinia": "^3.0.4",

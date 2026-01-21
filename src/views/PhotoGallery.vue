@@ -1,5 +1,5 @@
 <template>
-  <div class="photo-gallery-container min-h-screen bg-gray-900 overflow-hidden">
+  <div class="photo-gallery-container min-h-screen bg-gray-900 overflow-hidden" ref="containerRef">
     <!-- Loading state -->
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
       <div class="text-center text-white">
@@ -17,47 +17,50 @@
       </div>
     </div>
 
-    <!-- Horizontal scrolling gallery -->
-    <div v-else class="gallery-wrapper pt-20">
-      <!-- Scroll hint -->
-      <div class="scroll-hint text-center text-white/60 mb-4 flex items-center justify-center gap-2">
-        <span class="text-sm">← Faites défiler →</span>
+    <!-- Panzoom gallery -->
+    <div v-else class="gallery-viewport" ref="viewportRef">
+      <!-- Instructions overlay -->
+      <div class="instructions-overlay" :class="{ 'fade-out': instructionsHidden }">
+        <div class="instructions-content">
+          <template v-if="isMobile">
+            <p>👆 Glisser pour explorer</p>
+            <p>🤏 Pincer pour zoomer</p>
+            <p>👆 Toucher pour agrandir</p>
+          </template>
+          <template v-else>
+            <p>🖱️ Glisser pour explorer</p>
+            <p>🔍 Molette pour zoomer</p>
+            <p>👆 Cliquer pour agrandir</p>
+          </template>
+        </div>
       </div>
-      
-      <!-- Horizontal scroll container -->
-      <div class="gallery-horizontal" ref="galleryRef">
+
+      <!-- Zoom controls -->
+      <div class="zoom-controls">
+        <button @click="zoomIn" class="zoom-btn" title="Zoom avant">+</button>
+        <button @click="zoomOut" class="zoom-btn" title="Zoom arrière">−</button>
+        <button @click="resetZoom" class="zoom-btn reset-btn" title="Réinitialiser">⟲</button>
+      </div>
+
+      <!-- Panzoom canvas -->
+      <div class="panzoom-canvas" ref="canvasRef">
         <div 
-          v-for="(photo, index) in shuffledPhotos" 
+          v-for="(photo, index) in scatteredPhotos" 
           :key="photo.id"
-          class="gallery-item relative overflow-hidden rounded-2xl cursor-zoom-in group flex-shrink-0"
-          :class="getItemClass(photo)"
-          @click="openLightbox(index)"
+          class="photo-frame"
+          :style="photo.style"
+          @click.stop="openLightbox(index)"
         >
           <img 
             :src="photo.thumbnail" 
             :alt="photo.title || formatDate(photo.date)"
-            class="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110"
+            class="photo-image"
             loading="lazy"
+            draggable="false"
           />
-          <!-- Gradient overlay on hover -->
-          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div class="absolute bottom-0 left-0 right-0 p-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-              <p v-if="photo.date" class="text-white text-sm font-medium">{{ formatDate(photo.date) }}</p>
-            </div>
+          <div class="photo-overlay">
+            <p v-if="photo.date" class="photo-date">{{ formatDate(photo.date) }}</p>
           </div>
-          <!-- Sparkle effect on hover -->
-          <div class="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div class="sparkle-effect"></div>
-          </div>
-          <!-- Glow effect -->
-          <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 glow-effect"></div>
-        </div>
-      </div>
-      
-      <!-- Scroll progress indicator -->
-      <div class="scroll-progress-container mt-6 px-8">
-        <div class="scroll-progress-track">
-          <div class="scroll-progress-bar" :style="{ width: scrollProgress + '%' }"></div>
         </div>
       </div>
     </div>
@@ -65,15 +68,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import Panzoom from '@panzoom/panzoom'
 import PhotoSwipe from 'photoswipe'
 import 'photoswipe/style.css'
 
 const loading = ref(true)
 const photos = ref([])
-const shuffledPhotos = ref([])
-const galleryRef = ref(null)
-const scrollProgress = ref(0)
+const containerRef = ref(null)
+const viewportRef = ref(null)
+const canvasRef = ref(null)
+const instructionsHidden = ref(false)
+const isMobile = ref(false)
+let panzoomInstance = null
+
+// Check if mobile device
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768 || 'ontouchstart' in window
+}
 
 // Fisher-Yates shuffle algorithm
 const shuffleArray = (array) => {
@@ -85,6 +97,65 @@ const shuffleArray = (array) => {
   return shuffled
 }
 
+// Generate scattered positions for photos - responsive sizes
+const scatteredPhotos = computed(() => {
+  if (photos.value.length === 0) return []
+  
+  const shuffled = shuffleArray(photos.value)
+  const canvasSize = isMobile.value ? 2000 : 3000
+  const photoSize = isMobile.value ? 180 : 280
+  const padding = isMobile.value ? 40 : 60
+  
+  // Create a grid-based scattered layout
+  const cols = Math.ceil(Math.sqrt(shuffled.length * 1.5))
+  const rows = Math.ceil(shuffled.length / cols)
+  const cellWidth = (canvasSize - padding * 2) / cols
+  const cellHeight = (canvasSize - padding * 2) / rows
+  
+  return shuffled.map((photo, index) => {
+    const col = index % cols
+    const row = Math.floor(index / cols)
+    
+    // Base position in grid
+    const baseX = padding + col * cellWidth + cellWidth / 2
+    const baseY = padding + row * cellHeight + cellHeight / 2
+    
+    // Add randomness
+    const randomX = (Math.random() - 0.5) * cellWidth * 0.5
+    const randomY = (Math.random() - 0.5) * cellHeight * 0.5
+    const rotation = (Math.random() - 0.5) * 16 // -8 to 8 degrees
+    
+    // Determine size based on aspect ratio
+    const ratio = photo.width / photo.height
+    let width, height
+    if (ratio > 1.2) {
+      // Landscape
+      width = photoSize * 1.3
+      height = photoSize * 0.9
+    } else if (ratio < 0.85) {
+      // Portrait
+      width = photoSize * 0.85
+      height = photoSize * 1.25
+    } else {
+      // Square-ish
+      width = photoSize
+      height = photoSize
+    }
+    
+    return {
+      ...photo,
+      style: {
+        left: `${baseX + randomX - width / 2}px`,
+        top: `${baseY + randomY - height / 2}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: `rotate(${rotation}deg)`,
+        zIndex: Math.floor(Math.random() * 10)
+      }
+    }
+  })
+})
+
 const formatDate = (date) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('fr-FR', {
@@ -94,24 +165,6 @@ const formatDate = (date) => {
   })
 }
 
-// Determine CSS class based on image orientation
-const getItemClass = (photo) => {
-  const ratio = photo.width / photo.height
-  if (ratio > 1.3) {
-    return 'landscape'
-  } else if (ratio < 0.8) {
-    return 'portrait'
-  }
-  return 'square'
-}
-
-const updateScrollProgress = () => {
-  if (!galleryRef.value) return
-  const { scrollLeft, scrollWidth, clientWidth } = galleryRef.value
-  const maxScroll = scrollWidth - clientWidth
-  scrollProgress.value = maxScroll > 0 ? (scrollLeft / maxScroll) * 100 : 0
-}
-
 const loadPhotos = async () => {
   loading.value = true
   try {
@@ -119,8 +172,6 @@ const loadPhotos = async () => {
     if (response.ok) {
       const data = await response.json()
       photos.value = data.photos || []
-      // Shuffle once when photos are loaded
-      shuffledPhotos.value = shuffleArray(photos.value)
     }
   } catch (error) {
     console.error('Error loading photos:', error)
@@ -128,10 +179,61 @@ const loadPhotos = async () => {
   loading.value = false
 }
 
+const initPanzoom = () => {
+  if (!canvasRef.value || !viewportRef.value) return
+  
+  const canvasSize = isMobile.value ? 2000 : 3000
+  const startOffset = isMobile.value ? -500 : -750
+  
+  panzoomInstance = Panzoom(canvasRef.value, {
+    maxScale: 4,
+    minScale: 0.2,
+    startScale: isMobile.value ? 0.6 : 0.5,
+    startX: startOffset,
+    startY: startOffset,
+    cursor: 'grab',
+    canvas: true,
+    touchAction: 'none' // Important for mobile touch handling
+  })
+  
+  // Enable mouse wheel zoom (desktop)
+  viewportRef.value.addEventListener('wheel', (event) => {
+    event.preventDefault()
+    panzoomInstance.zoomWithWheel(event)
+  }, { passive: false })
+  
+  // Hide instructions after first interaction
+  const hideInstructions = () => {
+    instructionsHidden.value = true
+  }
+  
+  viewportRef.value.addEventListener('mousedown', hideInstructions, { once: true })
+  viewportRef.value.addEventListener('touchstart', hideInstructions, { once: true })
+  viewportRef.value.addEventListener('wheel', hideInstructions, { once: true })
+}
+
+const zoomIn = () => {
+  if (panzoomInstance) {
+    panzoomInstance.zoomIn()
+  }
+}
+
+const zoomOut = () => {
+  if (panzoomInstance) {
+    panzoomInstance.zoomOut()
+  }
+}
+
+const resetZoom = () => {
+  if (panzoomInstance) {
+    panzoomInstance.reset()
+  }
+}
+
 const openLightbox = async (index) => {
   await nextTick()
   
-  const items = shuffledPhotos.value.map(photo => ({
+  const items = scatteredPhotos.value.map(photo => ({
     src: photo.src,
     width: photo.width || 1200,
     height: photo.height || 900,
@@ -143,22 +245,27 @@ const openLightbox = async (index) => {
     index: index,
     bgOpacity: 0.95,
     showHideAnimationType: 'zoom',
+    // Mobile-friendly options
+    pinchToClose: true,
+    closeOnVerticalDrag: true,
+    padding: { top: 20, bottom: 20, left: 10, right: 10 }
   })
 
   pswp.init()
 }
 
 onMounted(async () => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   await loadPhotos()
   await nextTick()
-  if (galleryRef.value) {
-    galleryRef.value.addEventListener('scroll', updateScrollProgress)
-  }
+  setTimeout(initPanzoom, 100)
 })
 
 onUnmounted(() => {
-  if (galleryRef.value) {
-    galleryRef.value.removeEventListener('scroll', updateScrollProgress)
+  window.removeEventListener('resize', checkMobile)
+  if (panzoomInstance) {
+    panzoomInstance.destroy()
   }
 })
 </script>
@@ -166,132 +273,163 @@ onUnmounted(() => {
 <style scoped>
 .photo-gallery-container {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  position: relative;
 }
 
-.gallery-wrapper {
-  height: calc(100vh - 80px);
+.gallery-viewport {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.gallery-viewport:active {
+  cursor: grabbing;
+}
+
+/* Instructions overlay */
+.instructions-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+
+.instructions-overlay.fade-out {
+  opacity: 0;
+}
+
+.instructions-content {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(15px);
+  padding: 1.5rem 2rem;
+  border-radius: 1rem;
+  text-align: center;
+  color: white;
+  animation: pulse-glow 2s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.instructions-content p {
+  margin: 0.4rem 0;
+  font-size: 1rem;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.5); }
+}
+
+/* Zoom controls */
+.zoom-controls {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
 }
 
-/* Horizontal scrolling gallery */
-.gallery-horizontal {
+.zoom-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
-  gap: 1.5rem;
-  padding: 1rem 2rem 2rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  flex: 1;
   align-items: center;
-  
-  /* Custom scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(102, 126, 234, 0.5) transparent;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.gallery-horizontal::-webkit-scrollbar {
-  height: 8px;
+.zoom-btn:hover,
+.zoom-btn:active {
+  background: rgba(102, 126, 234, 0.6);
+  transform: scale(1.1);
 }
 
-.gallery-horizontal::-webkit-scrollbar-track {
-  background: transparent;
+.reset-btn {
+  font-size: 1.2rem;
 }
 
-.gallery-horizontal::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 4px;
+/* Panzoom canvas */
+.panzoom-canvas {
+  position: relative;
+  width: 3000px;
+  height: 3000px;
+  transform-origin: center center;
 }
 
-/* Base gallery item */
-.gallery-item {
-  scroll-snap-align: center;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
-              box-shadow 0.5s ease;
-}
-
-.gallery-item:hover {
-  transform: scale(1.05) translateY(-10px);
-  box-shadow: 0 25px 80px rgba(102, 126, 234, 0.5);
-  z-index: 10;
-}
-
-/* Portrait images - taller */
-.gallery-item.portrait {
-  width: 300px;
-  height: 450px;
-}
-
-/* Landscape images - wider */
-.gallery-item.landscape {
-  width: 500px;
-  height: 350px;
-}
-
-/* Square images */
-.gallery-item.square {
-  width: 350px;
-  height: 350px;
-}
-
-/* Scroll progress indicator */
-.scroll-progress-container {
-  padding-bottom: 2rem;
-}
-
-.scroll-progress-track {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.scroll-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
-  border-radius: 2px;
-  transition: width 0.1s ease-out;
-}
-
-/* Scroll hint animation */
-.scroll-hint {
-  animation: fadeInOut 3s ease-in-out infinite;
-}
-
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
-}
-
-/* Sparkle animation */
-.sparkle-effect {
+/* Photo frame */
+.photo-frame {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.2) 40%,
-    rgba(255, 255, 255, 0.2) 60%,
-    transparent 80%
-  );
-  background-size: 300% 300%;
-  animation: sparkle 2s ease-in-out infinite;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s ease;
+  background: #1a1a2e;
+  -webkit-tap-highlight-color: transparent;
 }
 
-@keyframes sparkle {
-  0% { background-position: 100% 100%; }
-  50% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
+.photo-frame:hover,
+.photo-frame:active {
+  transform: scale(1.08) !important;
+  box-shadow: 
+    0 15px 50px rgba(0, 0, 0, 0.8),
+    0 0 0 3px rgba(102, 126, 234, 0.5),
+    0 0 30px rgba(102, 126, 234, 0.25);
+  z-index: 1000 !important;
 }
 
-/* Glow effect */
-.glow-effect {
-  box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.15),
-              0 0 60px rgba(102, 126, 234, 0.4);
+.photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Photo overlay - hidden on mobile for cleaner look */
+.photo-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.photo-frame:hover .photo-overlay {
+  opacity: 1;
+}
+
+.photo-date {
+  color: white;
+  font-size: 0.75rem;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* Custom PhotoSwipe styles */
@@ -303,43 +441,63 @@ onUnmounted(() => {
   color: white;
 }
 
-/* Responsive adjustments */
+/* Mobile adjustments */
 @media (max-width: 768px) {
-  .gallery-horizontal {
-    gap: 1rem;
-    padding: 1rem;
+  .panzoom-canvas {
+    width: 2000px;
+    height: 2000px;
   }
   
-  .gallery-item.portrait {
-    width: 220px;
-    height: 330px;
+  .zoom-controls {
+    bottom: 1rem;
+    right: 1rem;
+    flex-direction: row;
+    gap: 0.75rem;
   }
   
-  .gallery-item.landscape {
-    width: 350px;
-    height: 250px;
+  .zoom-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
   }
   
-  .gallery-item.square {
-    width: 260px;
-    height: 260px;
+  .reset-btn {
+    font-size: 1.1rem;
+  }
+  
+  .instructions-content {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .instructions-content p {
+    font-size: 0.9rem;
+    margin: 0.3rem 0;
+  }
+  
+  .photo-frame {
+    border-radius: 4px;
+  }
+  
+  /* Hide overlay on mobile - tap to view */
+  .photo-overlay {
+    display: none;
   }
 }
 
-@media (min-width: 1400px) {
-  .gallery-item.portrait {
-    width: 380px;
-    height: 570px;
+/* Very small screens */
+@media (max-width: 400px) {
+  .zoom-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
   }
   
-  .gallery-item.landscape {
-    width: 650px;
-    height: 450px;
+  .instructions-content {
+    padding: 1rem 1.25rem;
   }
   
-  .gallery-item.square {
-    width: 450px;
-    height: 450px;
+  .instructions-content p {
+    font-size: 0.85rem;
   }
 }
 </style>
