@@ -7,5 +7,5 @@ export default defineConfig({
     UnoCSS(),
     vue(),
   ],
-  base: './',
+  base: '/moinniversaire/',
 })

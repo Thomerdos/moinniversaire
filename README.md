@@ -45,6 +45,26 @@ npm run build
 npm run preview
 ```
 
+## 🚀 Déploiement sur GitHub Pages
+
+Ce projet est configuré pour un déploiement automatique sur GitHub Pages via GitHub Actions.
+
+### Configuration initiale
+
+1. Allez dans **Settings** > **Pages** de votre dépôt GitHub
+2. Sous **Source**, sélectionnez **GitHub Actions**
+3. Le workflow se déclenchera automatiquement à chaque push sur la branche `main`
+
+### Déploiement manuel
+
+Vous pouvez aussi déclencher le déploiement manuellement :
+1. Allez dans l'onglet **Actions** de votre dépôt
+2. Sélectionnez le workflow "Déploiement sur GitHub Pages"
+3. Cliquez sur **Run workflow**
+
+Une fois déployé, votre application sera accessible à l'adresse :
+`https://thomerdos.github.io/moinniversaire/`
+
 ## 📁 Structure du Projet
 
 ```
@@ -56,6 +76,9 @@ moinniversaire/
 │   ├── main.js                      # Point d'entrée
 │   └── style.css                    # Styles globaux
 ├── public/                          # Fichiers statiques
+├── .github/
+│   └── workflows/
+│       └── deploy.yml               # Workflow GitHub Actions pour le déploiement
 ├── index.html                       # Template HTML
 ├── uno.config.js                    # Configuration UnoCSS
 ├── vite.config.js                   # Configuration Vite
