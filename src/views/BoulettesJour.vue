@@ -1,15 +1,5 @@
 <template>
   <div class="relative">
-    <!-- Bouton de test discret en bas à droite -->
-    <button 
-      @click="toggleTestMode"
-      class="fixed bottom-4 right-4 z-50 px-2 py-1 rounded text-xs transition-all duration-300 opacity-30 hover:opacity-100"
-      :class="testMode ? 'bg-mafia-gold/20 text-mafia-gold border border-mafia-gold' : 'bg-gray-800/20 text-gray-500 border border-gray-700'"
-      title="Mode test pour voir le Boulettes Jour"
-    >
-      🧪
-    </button>
-
     <div class="text-center p-12 bg-mafia-dark/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in border-4 border-mafia-gold">
       <div class="text-[6rem] mb-6 animate-bounce-slow">{{ emoji }}</div>
       <h1 class="mafia-title text-4xl mb-4 text-mafia-gold font-bold select-none">
@@ -42,39 +32,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { CHECK_INTERVAL_MS } from '../constants'
+import { computed, watch, onMounted } from 'vue'
+import { useCurrentDate } from '../composables/useCurrentDate'
 
-const now = ref(new Date())
-const interval = ref(null)
-const testMode = ref(false)
-
-const day = computed(() => now.value.getDate())
-const month = computed(() => now.value.getMonth())
-const year = computed(() => now.value.getFullYear())
+const { now, day, month, year, monthName, isTestMode } = useCurrentDate()
 
 // Le Boulettes Jour est le 3 janvier (mois 0 = janvier)
-// En mode test, on force la date à être le 3 janvier
-const isBoulettesJour = computed(() => {
-  if (testMode.value) {
-    return true
-  }
-  return day.value === 3 && month.value === 0
-})
-
-const monthName = computed(() => 
-  now.value.toLocaleDateString('fr-FR', { month: 'long' })
-)
+const isBoulettesJour = computed(() => day.value === 3 && month.value === 0)
 
 const emoji = computed(() => isBoulettesJour.value ? '🍝' : '📅')
 
 const response = computed(() => isBoulettesJour.value ? 'OUI ! 🎊' : 'Non 😔')
 
 const dateInfo = computed(() => {
-  if (testMode.value) {
-    return `Mode test : 3 janvier ${year.value}`
-  }
-  return `Nous sommes le ${day.value} ${monthName.value} ${year.value}`
+  const prefix = isTestMode.value ? 'Mode test : ' : 'Nous sommes le '
+  return `${prefix}${day.value} ${monthName.value} ${year.value}`
 })
 
 const daysUntilNext3January = computed(() => {
@@ -104,29 +76,15 @@ const countdown = computed(() => {
   return `Plus que ${days} jour${days > 1 ? 's' : ''} avant le prochain Boulettes Jour !`
 })
 
-const toggleTestMode = () => {
-  testMode.value = !testMode.value
-  updateBodyClass()
-}
-
 const updateBodyClass = () => {
   document.body.className = isBoulettesJour.value ? 'boulettes-jour' : 'not-boulettes-jour'
 }
 
-const updateDate = () => {
-  now.value = new Date()
-  updateBodyClass()
-}
+// Mettre à jour la classe du body quand la date change
+watch([isBoulettesJour], updateBodyClass)
 
 onMounted(() => {
   updateBodyClass()
-  interval.value = setInterval(updateDate, CHECK_INTERVAL_MS)
-})
-
-onUnmounted(() => {
-  if (interval.value) {
-    clearInterval(interval.value)
-  }
 })
 </script>
 

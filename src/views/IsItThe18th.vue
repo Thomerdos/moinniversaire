@@ -17,29 +17,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import AnniversaryDisplay from '../components/AnniversaryDisplay.vue'
-import { COUPLE_START_DATE, ANNIVERSARY_MONTH, CHECK_INTERVAL_MS } from '../constants'
+import { useCurrentDate } from '../composables/useCurrentDate'
+import { COUPLE_START_DATE, ANNIVERSARY_MONTH } from '../constants'
 
-const now = ref(new Date())
-const interval = ref(null)
+const { now, day, month, year, monthName, isTestMode } = useCurrentDate()
 
-const day = computed(() => now.value.getDate())
-const month = computed(() => now.value.getMonth())
-const year = computed(() => now.value.getFullYear())
 const is18 = computed(() => day.value === 18)
-
-const monthName = computed(() => 
-  now.value.toLocaleDateString('fr-FR', { month: 'long' })
-)
 
 const emoji = computed(() => is18.value ? '🎊' : '🗓️')
 
 const response = computed(() => is18.value ? 'OUI ! 🎉' : 'Non 😔')
 
-const dateInfo = computed(() => 
-  `Nous sommes le ${day.value} ${monthName.value} ${year.value}`
-)
+const dateInfo = computed(() => {
+  const prefix = isTestMode.value ? 'Mode test : ' : 'Nous sommes le '
+  return `${prefix}${day.value} ${monthName.value} ${year.value}`
+})
 
 const daysUntilNext18 = computed(() => {
   if (day.value < 18) {
@@ -82,20 +76,10 @@ const updateBodyClass = () => {
   document.body.className = is18.value ? 'is-18' : 'not-18'
 }
 
-const updateDate = () => {
-  now.value = new Date()
-  updateBodyClass()
-}
+// Mettre à jour la classe du body quand la date change
+watch([is18], updateBodyClass)
 
 onMounted(() => {
   updateBodyClass()
-  // Vérifier toutes les heures si la date a changé
-  interval.value = setInterval(updateDate, CHECK_INTERVAL_MS)
-})
-
-onUnmounted(() => {
-  if (interval.value) {
-    clearInterval(interval.value)
-  }
 })
 </script>
