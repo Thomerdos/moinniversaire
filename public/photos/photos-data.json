@@ -10,15 +10,6 @@
       "title": ""
     },
     {
-      "id": "PXL_20260104_113719060_MP__1_",
-      "src": "./photos/PXL_20260104_113719060_MP__1_.webp",
-      "thumbnail": "./photos/thumbs/PXL_20260104_113719060_MP__1_.webp",
-      "width": 1440,
-      "height": 1920,
-      "date": "2026-01-04",
-      "title": ""
-    },
-    {
       "id": "PXL_20260104_113719060_MP",
       "src": "./photos/PXL_20260104_113719060_MP.webp",
       "thumbnail": "./photos/thumbs/PXL_20260104_113719060_MP.webp",
@@ -154,5 +145,5 @@
       "title": ""
     }
   ],
-  "lastUpdate": "2026-01-21T22:30:47.846Z"
+  "lastUpdate": "2026-01-21T22:40:00.000Z"
 }
