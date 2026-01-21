@@ -43,7 +43,6 @@
             src="/sopranos-pasta.gif" 
             alt="Tony Soprano eating pasta"
             class="soprano-gif rounded-lg"
-            @error="handleImageError"
           />
         </div>
       </div>
@@ -95,11 +94,6 @@ const countdown = computed(() => {
   const days = daysUntilNext3January.value
   return `Plus que ${days} jour${days > 1 ? 's' : ''} avant le prochain Boulettes Jour !`
 })
-
-const handleImageError = (event) => {
-  // Si le GIF ne charge pas, utiliser le placeholder
-  event.target.src = '/sopranos-pasta-placeholder.svg'
-}
 
 const updateBodyClass = () => {
   document.body.className = isBoulettesJour.value ? 'boulettes-jour' : 'not-boulettes-jour'
