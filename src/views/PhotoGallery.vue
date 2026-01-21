@@ -27,13 +27,13 @@
       </div>
 
       <!-- Panzoom canvas -->
-      <div class="panzoom-canvas" ref="canvasRef">
+      <div class="panzoom-canvas" ref="canvasRef" :style="canvasStyle">
         <div 
           v-for="(photo, index) in gridPhotos" 
           :key="photo.id"
           class="photo-frame"
           :style="photo.style"
-          @click.stop="openLightbox(index)"
+          @click.stop="handlePhotoClick(index, $event)"
         >
           <img 
             :src="photo.thumbnail" 
@@ -64,6 +64,8 @@ const viewportRef = ref(null)
 const canvasRef = ref(null)
 const isMobile = ref(false)
 let panzoomInstance = null
+let isDragging = ref(false)
+let dragStartPos = { x: 0, y: 0 }
 
 // Check if mobile device
 const checkMobile = () => {
@@ -80,51 +82,107 @@ const shuffleArray = (array) => {
   return shuffled
 }
 
-// Generate tight grid layout where photos touch - BIG images for exploration
+// Seeded random for consistent masonry pattern
+const seededRandom = (seed) => {
+  const x = Math.sin(seed) * 10000
+  return x - Math.floor(x)
+}
+
+// Generate masonry-like layout - varied sizes but photos still touch
 const gridPhotos = computed(() => {
   if (photos.value.length === 0) return []
   
   const shuffled = shuffleArray(photos.value)
-  // Much bigger photos - only 2-3 visible at a time to encourage exploration
-  const photoSize = isMobile.value ? 280 : 450
-  const cols = isMobile.value ? 2 : 3
+  const baseUnit = isMobile.value ? 180 : 280
   
-  return shuffled.map((photo, index) => {
-    const col = index % cols
-    const row = Math.floor(index / cols)
-    
-    // Determine size based on aspect ratio
+  // Create a more organic masonry layout
+  // We'll use a bin-packing approach where photos have varied sizes
+  const positions = []
+  let currentX = 0
+  let currentY = 0
+  let rowHeight = 0
+  let maxWidth = isMobile.value ? 4 : 5 // max units per row
+  let rowItems = []
+  
+  shuffled.forEach((photo, index) => {
+    // Vary size based on aspect ratio and some randomness
     const ratio = photo.width / photo.height
-    let width, height
-    if (ratio > 1.2) {
-      // Landscape - wider
-      width = photoSize * 1.3
-      height = photoSize
-    } else if (ratio < 0.85) {
-      // Portrait - taller
-      width = photoSize
-      height = photoSize * 1.3
+    const seed = index * 137.5 // Golden angle for variety
+    const randomFactor = seededRandom(seed)
+    
+    let widthUnits, heightUnits
+    
+    if (ratio > 1.3) {
+      // Wide landscape
+      widthUnits = randomFactor > 0.5 ? 2 : 1.5
+      heightUnits = 1
+    } else if (ratio < 0.75) {
+      // Tall portrait
+      widthUnits = 1
+      heightUnits = randomFactor > 0.5 ? 2 : 1.5
     } else {
-      // Square-ish
-      width = photoSize
-      height = photoSize
+      // Square-ish - vary sizes
+      const sizes = [1, 1.2, 1.5]
+      const sizeIndex = Math.floor(randomFactor * sizes.length)
+      widthUnits = sizes[sizeIndex]
+      heightUnits = sizes[(sizeIndex + 1) % sizes.length]
     }
     
-    // Position in tight grid (photos touching)
-    const x = col * photoSize
-    const y = row * photoSize
+    const width = widthUnits * baseUnit
+    const height = heightUnits * baseUnit
     
-    return {
+    // Simple row-based layout with varied heights
+    if (currentX + widthUnits > maxWidth && rowItems.length > 0) {
+      // Start new row
+      currentY += rowHeight
+      currentX = 0
+      rowHeight = 0
+      rowItems = []
+    }
+    
+    positions.push({
       ...photo,
-      style: {
-        left: `${x}px`,
-        top: `${y}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-        zIndex: 1
-      }
-    }
+      x: currentX * baseUnit,
+      y: currentY,
+      width,
+      height
+    })
+    
+    currentX += widthUnits
+    rowHeight = Math.max(rowHeight, height)
+    rowItems.push(index)
   })
+  
+  return positions.map((photo) => ({
+    ...photo,
+    style: {
+      left: `${photo.x}px`,
+      top: `${photo.y}px`,
+      width: `${photo.width}px`,
+      height: `${photo.height}px`,
+      zIndex: 1
+    }
+  }))
+})
+
+// Calculate canvas size based on masonry layout
+const canvasStyle = computed(() => {
+  if (gridPhotos.value.length === 0) return { width: '100%', height: '100%' }
+  
+  let maxRight = 0
+  let maxBottom = 0
+  
+  gridPhotos.value.forEach(photo => {
+    const right = parseFloat(photo.style.left) + parseFloat(photo.style.width)
+    const bottom = parseFloat(photo.style.top) + parseFloat(photo.style.height)
+    maxRight = Math.max(maxRight, right)
+    maxBottom = Math.max(maxBottom, bottom)
+  })
+  
+  return {
+    width: `${maxRight}px`,
+    height: `${maxBottom}px`
+  }
 })
 
 const formatDate = (date) => {
@@ -153,18 +211,42 @@ const loadPhotos = async () => {
 const initPanzoom = () => {
   if (!canvasRef.value || !viewportRef.value) return
   
-  // Start centered on the grid
-  const startOffset = isMobile.value ? -100 : -200
+  // Get canvas dimensions from computed style
+  const canvasDims = canvasStyle.value
+  const canvasWidth = parseFloat(canvasDims.width)
+  const canvasHeight = parseFloat(canvasDims.height)
+  
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  // Scale to fill viewport (no empty space)
+  const scaleX = viewportWidth / canvasWidth
+  const scaleY = viewportHeight / canvasHeight
+  const fillScale = Math.max(scaleX, scaleY) * 1.15
   
   panzoomInstance = Panzoom(canvasRef.value, {
-    maxScale: 4,
-    minScale: 0.3,
-    startScale: isMobile.value ? 0.9 : 0.7,
-    startX: startOffset,
-    startY: startOffset,
+    maxScale: 5,
+    minScale: 0.4,
+    startScale: fillScale,
+    startX: 0,
+    startY: 0,
     cursor: 'grab',
     canvas: true,
-    touchAction: 'none' // Important for mobile touch handling
+    touchAction: 'none'
+  })
+  
+  // Track drag to prevent click after drag
+  viewportRef.value.addEventListener('pointerdown', (e) => {
+    dragStartPos = { x: e.clientX, y: e.clientY }
+    isDragging.value = false
+  })
+  
+  viewportRef.value.addEventListener('pointermove', (e) => {
+    const dx = Math.abs(e.clientX - dragStartPos.x)
+    const dy = Math.abs(e.clientY - dragStartPos.y)
+    if (dx > 5 || dy > 5) {
+      isDragging.value = true
+    }
   })
   
   // Enable mouse wheel zoom (desktop)
@@ -190,6 +272,15 @@ const resetZoom = () => {
   if (panzoomInstance) {
     panzoomInstance.reset()
   }
+}
+
+const handlePhotoClick = (index, event) => {
+  // Don't open lightbox if we were dragging
+  if (isDragging.value) {
+    isDragging.value = false
+    return
+  }
+  openLightbox(index)
 }
 
 const openLightbox = async (index) => {
@@ -293,12 +384,10 @@ onUnmounted(() => {
   font-size: 1.2rem;
 }
 
-/* Panzoom canvas - sized for big images */
+/* Panzoom canvas - dynamic size based on grid */
 .panzoom-canvas {
   position: relative;
-  width: 3000px;
-  height: 3000px;
-  transform-origin: center center;
+  transform-origin: 0 0;
 }
 
 /* Photo frame - tight grid, no gaps */
@@ -362,11 +451,6 @@ onUnmounted(() => {
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  .panzoom-canvas {
-    width: 1800px;
-    height: 1800px;
-  }
-  
   .zoom-controls {
     bottom: 1rem;
     right: 1rem;
