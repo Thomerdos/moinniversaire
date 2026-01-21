@@ -1,5 +1,6 @@
 <template>
-  <div class="relative w-full flex justify-center items-center px-4">
+  <div class="page-background" :class="isBoulettesJour ? 'bg-boulettes-jour' : 'bg-not-boulettes-jour'">
+    <div class="relative w-full flex justify-center items-center px-4">
     <!-- Layout normal (non-Boulettes Jour) -->
     <div v-if="!isBoulettesJour" class="text-center p-12 bg-mafia-dark/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in border-4 border-mafia-gold">
       <div class="text-[6rem] mb-6 animate-bounce-slow">{{ emoji }}</div>
@@ -47,11 +48,11 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
-
 <script setup>
-import { computed, watch, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useCurrentDate } from '../composables/useCurrentDate'
 
 const { now, day, month, year, monthName, isTestMode } = useCurrentDate()
@@ -94,20 +95,26 @@ const countdown = computed(() => {
   const days = daysUntilNext3January.value
   return `Plus que ${days} jour${days > 1 ? 's' : ''} avant le prochain Boulettes Jour !`
 })
-
-const updateBodyClass = () => {
-  document.body.className = isBoulettesJour.value ? 'boulettes-jour' : 'not-boulettes-jour'
-}
-
-// Mettre à jour la classe du body quand la date change
-watch([isBoulettesJour], updateBodyClass)
-
-onMounted(() => {
-  updateBodyClass()
-})
 </script>
 
 <style scoped>
+.page-background {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.bg-boulettes-jour {
+  background: linear-gradient(135deg, #1a1a1a 0%, #8B0000 100%);
+}
+
+.bg-not-boulettes-jour {
+  background: linear-gradient(135deg, #2a2a2a 0%, #4a4a4a 100%);
+}
+
 .mafia-title,
 .mafia-quote {
   font-family: 'Times New Roman', serif;

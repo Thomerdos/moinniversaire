@@ -1,7 +1,8 @@
 <template>
-  <div class="text-center p-12 bg-white/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in">
-    <div class="text-[6rem] mb-6 animate-bounce-slow">💑</div>
-    <h1 class="text-4xl mb-4 text-gray-800">Depuis combien de temps ?</h1>
+  <div class="page-background bg-time-together">
+    <div class="text-center p-12 bg-white/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in">
+      <div class="text-[6rem] mb-6 animate-bounce-slow">💑</div>
+      <h1 class="text-4xl mb-4 text-gray-800">Depuis combien de temps ?</h1>
     
     <div v-if="hasStarted" class="space-y-6">
       <div class="text-5xl font-bold my-6 text-purple-gradient-start">
@@ -48,9 +49,9 @@
         {{ daysUntilStart }} jour{{ daysUntilStart > 1 ? 's' : '' }} avant le grand jour ! 💕
       </div>
     </div>
+    </div>
   </div>
 </template>
-
 <script setup>
 import { computed } from 'vue'
 import { useCurrentDate } from '../composables/useCurrentDate'
@@ -139,3 +140,18 @@ const daysUntilStart = computed(() => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 })
 </script>
+
+<style scoped>
+.page-background {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.bg-time-together {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #667eea 100%);
+}
+</style>

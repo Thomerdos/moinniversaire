@@ -1,24 +1,8 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
-  transition: background 0.5s ease;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-body.is-18 {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-body.not-18 {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-body.boulettes-jour {
-  background: linear-gradient(135deg, #1a1a1a 0%, #8B0000 100%);
-}
-
-body.not-boulettes-jour {
-  background: linear-gradient(135deg, #2a2a2a 0%, #4a4a4a 100%);
+  margin: 0;
+  padding: 0;
 }
 
 @keyframes fadeIn {
