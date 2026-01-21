@@ -1,7 +1,16 @@
 <template>
   <div class="mt-8 p-6 rounded-2xl text-[1.3rem] font-bold text-red-600 animate-pulse-slow bg-gradient-to-br from-peach-gradient-start to-peach-gradient-end">
     <div class="text-2xl my-2">{{ heartEmojis }}</div>
-    <div v-html="message"></div>
+    <div v-if="isYearlyAnniversary && yearsTogether === 0">
+      Aujourd'hui, c'est le début de notre histoire !
+    </div>
+    <div v-else-if="isYearlyAnniversary">
+      {{ yearsTogether }} an{{ yearsTogether > 1 ? 's' : '' }} ensemble !
+      <div class="text-base font-normal mt-1">({{ monthsTogether }} mois)</div>
+    </div>
+    <div v-else>
+      {{ monthsTogether }} mois ensemble !
+    </div>
     <div class="text-2xl my-2">{{ heartEmojis }}</div>
   </div>
 </template>
@@ -27,16 +36,4 @@ const props = defineProps({
 const heartEmojis = computed(() => 
   props.isYearlyAnniversary ? '💕 💖 💕' : '💕'
 )
-
-const message = computed(() => {
-  if (props.isYearlyAnniversary) {
-    if (props.yearsTogether === 0) {
-      return "Aujourd'hui, c'est le début de notre histoire !"
-    } else {
-      return `${props.yearsTogether} an${props.yearsTogether > 1 ? 's' : ''} ensemble !<br><small style="font-size: 0.9rem;">(${props.monthsTogether} mois)</small>`
-    }
-  } else {
-    return `${props.monthsTogether} mois ensemble !`
-  }
-})
 </script>
