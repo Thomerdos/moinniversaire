@@ -1,130 +1,235 @@
 # Configuration de la Galerie Google Photos
 
-Ce guide explique comment configurer la synchronisation automatique des photos depuis un album Google Photos.
+Guide détaillé pour configurer la synchronisation automatique des photos depuis un album Google Photos vers votre galerie.
 
-## ⚠️ Important : Limitation de l'API Google Photos
-
-L'API Google Photos Library **ne supporte pas nativement les comptes de service** pour les comptes Gmail personnels. Les comptes de service fonctionnent uniquement avec **Google Workspace** via la délégation au niveau du domaine.
-
-### Option A : Compte Google Workspace (avec Service Account)
-
-Si vous avez un compte Google Workspace, suivez les instructions ci-dessous pour utiliser un compte de service.
-
-### Option B : Compte Gmail personnel
-
-Pour les comptes Gmail personnels, vous devrez utiliser OAuth 2.0. Voir la section "Configuration OAuth 2.0 (Alternative)" en bas de ce document.
+**Temps estimé : 15-20 minutes**
 
 ---
 
-## Configuration avec Service Account (Google Workspace uniquement)
+## 📋 Sommaire
 
-### Prérequis
-
-1. Un compte **Google Workspace** (pas un compte Gmail personnel)
-2. Accès à la console d'administration Google Workspace
-3. Un album Google Photos contenant les photos à afficher
-
-### Étape 1 : Créer un projet Google Cloud
-
-1. Rendez-vous sur [Google Cloud Console](https://console.cloud.google.com/)
-2. Créez un nouveau projet ou sélectionnez un projet existant
-3. Activez l'API "Photos Library API" dans la bibliothèque d'API
-
-### Étape 2 : Créer un compte de service
-
-1. Allez dans "APIs & Services" → "Credentials"
-2. Cliquez sur "Create Credentials" → "Service Account"
-3. Donnez un nom au compte de service
-4. Cliquez sur "Create and Continue"
-5. Pas besoin d'ajouter de rôles, cliquez sur "Continue" puis "Done"
-6. Cliquez sur le compte de service créé
-7. Allez dans l'onglet "Keys"
-8. Cliquez sur "Add Key" → "Create new key" → "JSON"
-9. Téléchargez le fichier JSON (gardez-le en sécurité !)
-10. Notez le "Client ID" du compte de service (visible dans les détails)
-
-### Étape 3 : Configurer la délégation au niveau du domaine
-
-1. Connectez-vous à [Google Admin Console](https://admin.google.com/)
-2. Allez dans "Security" → "API Controls" → "Domain-wide delegation"
-3. Cliquez sur "Add new"
-4. Entrez le **Client ID** du compte de service
-5. Ajoutez le scope OAuth : `https://www.googleapis.com/auth/photoslibrary.readonly`
-6. Cliquez sur "Authorize"
-
-### Étape 4 : Trouver l'ID de votre album
-
-Utilisez l'API Explorer ou OAuth Playground pour lister vos albums :
-```
-GET https://photoslibrary.googleapis.com/v1/albums
-```
-
-L'ID de l'album sera dans la réponse JSON.
-
-### Étape 5 : Configurer les secrets GitHub
-
-Ajoutez ces secrets dans votre repository GitHub (Settings → Secrets and variables → Actions) :
-
-| Secret | Description |
-|--------|-------------|
-| `SERVICE_ACCOUNT_KEY` | Contenu complet du fichier JSON du compte de service |
-| `GOOGLE_USER_EMAIL` | Email de l'utilisateur dont les photos seront accessibles |
-| `GOOGLE_PHOTOS_ALBUM_ID` | ID de l'album à synchroniser |
-
-### Étape 6 : Déclencher la synchronisation
-
-La synchronisation s'exécute automatiquement :
-- **Quotidiennement** à 3h UTC
-- **Manuellement** via l'onglet "Actions" de GitHub
-
-Pour déclencher manuellement :
-1. Allez dans l'onglet "Actions" de votre repository
-2. Sélectionnez le workflow "Sync Google Photos"
-3. Cliquez sur "Run workflow"
+1. [Créer un projet Google Cloud](#étape-1--créer-un-projet-google-cloud)
+2. [Activer l'API Photos Library](#étape-2--activer-lapi-photos-library)
+3. [Configurer l'écran de consentement OAuth](#étape-3--configurer-lécran-de-consentement-oauth)
+4. [Créer les identifiants OAuth](#étape-4--créer-les-identifiants-oauth)
+5. [Obtenir le Refresh Token](#étape-5--obtenir-le-refresh-token)
+6. [Trouver l'ID de votre album](#étape-6--trouver-lid-de-votre-album)
+7. [Configurer les secrets GitHub](#étape-7--configurer-les-secrets-github)
+8. [Tester la configuration](#étape-8--tester-la-configuration)
 
 ---
 
-## Configuration OAuth 2.0 (Alternative pour comptes Gmail personnels)
+## Étape 1 : Créer un projet Google Cloud
 
-Si vous n'avez pas Google Workspace, vous pouvez utiliser OAuth 2.0 en modifiant le script.
+1. Ouvrez [Google Cloud Console](https://console.cloud.google.com/)
 
-### Prérequis
+2. Connectez-vous avec le **même compte Google** que celui de vos photos
 
-1. Un compte Google avec accès à Google Photos
-2. Un album Google Photos contenant les photos à afficher
+3. En haut de la page, cliquez sur le sélecteur de projet (à côté de "Google Cloud")
 
-### Étape 1 : Créer des identifiants OAuth
+4. Dans la fenêtre popup, cliquez sur **"NOUVEAU PROJET"** (en haut à droite)
 
-1. Dans Google Cloud Console, allez dans "APIs & Services" → "Credentials"
-2. Cliquez sur "Create Credentials" → "OAuth client ID"
-3. Choisissez "Desktop app" comme type d'application
-4. Téléchargez le fichier JSON des identifiants
+5. Configurez le projet :
+   - **Nom du projet** : `moinniversaire-photos` (ou un nom de votre choix)
+   - **Organisation** : laissez vide si vous n'en avez pas
+   - Cliquez sur **"CRÉER"**
 
-### Étape 2 : Obtenir un Refresh Token
-
-Utilisez le [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) :
-
-1. Cliquez sur l'icône d'engrenage (⚙️) en haut à droite
-2. Cochez "Use your own OAuth credentials"
-3. Entrez votre Client ID et Client Secret
-4. Dans la liste des scopes, sélectionnez "Photos Library API v1" → `photoslibrary.readonly`
-5. Cliquez sur "Authorize APIs"
-6. Autorisez l'accès avec votre compte Google
-7. Cliquez sur "Exchange authorization code for tokens"
-8. Copiez le "Refresh token"
-
-### Étape 3 : Modifier le workflow
-
-Modifiez `.github/workflows/sync-google-photos.yml` pour utiliser OAuth au lieu du compte de service.
+6. Attendez quelques secondes que le projet soit créé, puis sélectionnez-le
 
 ---
 
-## Notes importantes
+## Étape 2 : Activer l'API Photos Library
 
-⚠️ **Les URLs des photos Google sont temporaires** (elles expirent après environ 1 heure). C'est pourquoi la synchronisation est programmée quotidiennement pour maintenir des URLs valides.
+1. Dans le menu de gauche (☰), allez dans **"API et services"** → **"Bibliothèque"**
 
-📷 **Taille des images** : Les images sont redimensionnées automatiquement :
-- Vignettes : 400x300 pixels
-- Pleine taille : 2048x2048 pixels max
+2. Dans la barre de recherche, tapez : `Photos Library API`
 
-🔒 **Sécurité** : Vos identifiants sont stockés de manière sécurisée dans les secrets GitHub et ne sont jamais exposés dans le code.
+3. Cliquez sur **"Photos Library API"** dans les résultats
+
+4. Cliquez sur le bouton bleu **"ACTIVER"**
+
+5. Attendez que l'API soit activée (vous serez redirigé vers la page de l'API)
+
+---
+
+## Étape 3 : Configurer l'écran de consentement OAuth
+
+C'est l'écran que vous verrez quand vous autoriserez l'accès à vos photos.
+
+1. Dans le menu de gauche, allez dans **"API et services"** → **"Écran de consentement OAuth"**
+
+2. Choisissez le type d'utilisateur :
+   - Sélectionnez **"Externe"**
+   - Cliquez sur **"CRÉER"**
+
+3. Remplissez les informations de l'application (page 1) :
+   - **Nom de l'application** : `Moinniversaire Gallery`
+   - **Adresse e-mail d'assistance utilisateur** : votre email
+   - **Logo de l'application** : laissez vide (optionnel)
+   - Descendez tout en bas
+   - **Adresses e-mail du développeur** : votre email
+   - Cliquez sur **"ENREGISTRER ET CONTINUER"**
+
+4. Scopes (page 2) :
+   - Cliquez sur **"AJOUTER OU SUPPRIMER DES CHAMPS D'APPLICATION"**
+   - Dans le filtre, tapez : `photoslibrary.readonly`
+   - Cochez la case à côté de `.../auth/photoslibrary.readonly`
+   - Cliquez sur **"METTRE À JOUR"** en bas
+   - Cliquez sur **"ENREGISTRER ET CONTINUER"**
+
+5. Utilisateurs de test (page 3) :
+   - Cliquez sur **"+ ADD USERS"**
+   - Entrez votre adresse email Gmail
+   - Cliquez sur **"AJOUTER"**
+   - Cliquez sur **"ENREGISTRER ET CONTINUER"**
+
+6. Résumé (page 4) :
+   - Vérifiez les informations
+   - Cliquez sur **"RETOUR AU TABLEAU DE BORD"**
+
+---
+
+## Étape 4 : Créer les identifiants OAuth
+
+1. Dans le menu de gauche, allez dans **"API et services"** → **"Identifiants"**
+
+2. En haut, cliquez sur **"+ CRÉER DES IDENTIFIANTS"**
+
+3. Sélectionnez **"ID client OAuth"**
+
+4. Configurez l'ID client :
+   - **Type d'application** : sélectionnez **"Application de bureau"**
+   - **Nom** : `Moinniversaire Sync`
+   - Cliquez sur **"CRÉER"**
+
+5. Une fenêtre popup apparaît avec vos identifiants :
+   - 📝 **Copiez le "ID client"** → gardez-le de côté
+   - 📝 **Copiez le "Code secret du client"** → gardez-le de côté
+   - Cliquez sur **"OK"**
+
+> ⚠️ **Important** : Gardez ces identifiants en sécurité ! Ne les partagez jamais publiquement.
+
+---
+
+## Étape 5 : Obtenir le Refresh Token
+
+Le refresh token permet à l'application de se connecter automatiquement sans intervention manuelle.
+
+1. Ouvrez [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) dans un nouvel onglet
+
+2. Configurez vos propres identifiants :
+   - Cliquez sur l'icône **⚙️ (engrenage)** en haut à droite
+   - Cochez la case **"Use your own OAuth credentials"**
+   - Remplissez :
+     - **OAuth Client ID** : collez votre ID client (de l'étape 4)
+     - **OAuth Client secret** : collez votre code secret (de l'étape 4)
+   - Fermez le panneau de configuration
+
+3. Sélectionnez le scope Photos :
+   - Dans le panneau de gauche **"Step 1: Select & authorize APIs"**
+   - Descendez et trouvez **"Photos Library API v1"**
+   - Cliquez dessus pour déplier
+   - Cochez **`https://www.googleapis.com/auth/photoslibrary.readonly`**
+
+4. Autorisez l'accès :
+   - Cliquez sur **"Authorize APIs"** (bouton bleu)
+   - Sélectionnez votre compte Google
+   - Vous verrez un avertissement "Cette application n'est pas validée" :
+     - Cliquez sur **"Paramètres avancés"** (ou "Advanced")
+     - Cliquez sur **"Accéder à Moinniversaire Gallery (non sécurisé)"**
+   - Cliquez sur **"Continuer"** pour autoriser l'accès aux photos
+
+5. Obtenez le refresh token :
+   - Vous êtes redirigé vers OAuth Playground
+   - Dans **"Step 2: Exchange authorization code for tokens"**
+   - Cliquez sur **"Exchange authorization code for tokens"**
+   - Dans la réponse JSON à droite, trouvez la ligne `"refresh_token"`
+   - 📝 **Copiez la valeur du refresh_token** (sans les guillemets)
+
+> 💡 **Conseil** : Le refresh token ressemble à `1//0e...` et fait environ 200 caractères
+
+---
+
+## Étape 6 : Trouver l'ID de votre album
+
+1. Toujours dans OAuth Playground, vous pouvez tester l'API :
+   - Dans **"Step 3: Configure request to API"**
+   - **HTTP Method** : `GET`
+   - **Request URI** : `https://photoslibrary.googleapis.com/v1/albums`
+   - Cliquez sur **"Send the request"**
+
+2. Dans la réponse JSON à droite :
+   - Cherchez l'album souhaité par son `"title"`
+   - 📝 **Copiez la valeur `"id"`** de cet album
+
+> 💡 **Alternative** : L'ID de l'album est visible dans l'URL quand vous ouvrez un album sur photos.google.com
+
+---
+
+## Étape 7 : Configurer les secrets GitHub
+
+1. Allez sur votre repository GitHub
+
+2. Cliquez sur **"Settings"** (onglet en haut)
+
+3. Dans le menu de gauche, cliquez sur **"Secrets and variables"** → **"Actions"**
+
+4. Ajoutez chaque secret en cliquant sur **"New repository secret"** :
+
+   | Nom du secret | Valeur |
+   |---------------|--------|
+   | `GOOGLE_CLIENT_ID` | L'ID client de l'étape 4 |
+   | `GOOGLE_CLIENT_SECRET` | Le code secret de l'étape 4 |
+   | `GOOGLE_REFRESH_TOKEN` | Le refresh token de l'étape 5 |
+   | `GOOGLE_PHOTOS_ALBUM_ID` | L'ID de l'album de l'étape 6 |
+
+---
+
+## Étape 8 : Tester la configuration
+
+### Test manuel du workflow
+
+1. Allez dans l'onglet **"Actions"** de votre repository
+
+2. Dans la liste de gauche, cliquez sur **"Sync Google Photos"**
+
+3. Cliquez sur **"Run workflow"** → **"Run workflow"** (bouton vert)
+
+4. Attendez que le workflow se termine (environ 30 secondes)
+
+5. Vérifiez le résultat :
+   - ✅ **Succès** : Le fichier `public/photos-data.json` a été créé/mis à jour
+   - ❌ **Échec** : Cliquez sur le workflow pour voir les logs d'erreur
+
+### Erreurs courantes
+
+| Erreur | Solution |
+|--------|----------|
+| `401 Unauthorized` | Vérifiez que le refresh token est correct |
+| `403 Forbidden` | Vérifiez que l'API Photos Library est activée |
+| `404 Not Found` | Vérifiez l'ID de l'album |
+| `invalid_grant` | Le refresh token a expiré, refaites l'étape 5 |
+
+### Vérifier les photos
+
+Après un sync réussi :
+1. Allez dans votre repository
+2. Ouvrez `public/photos-data.json`
+3. Vous devriez voir la liste des photos avec leurs URLs
+
+---
+
+## 🔄 Synchronisation automatique
+
+Une fois configuré, le workflow s'exécute automatiquement :
+- **Tous les jours à 3h UTC** (5h heure de Paris en été, 4h en hiver)
+- Les URLs des photos sont rafraîchies (elles expirent après ~1 heure)
+
+---
+
+## ⚠️ Notes importantes
+
+- **Les URLs des photos expirent** : C'est pourquoi le sync est quotidien
+- **Application "non vérifiée"** : C'est normal, votre app est en mode test
+- **Refresh token** : Il reste valide tant que vous ne révoquez pas l'accès
+- **Sécurité** : Vos secrets GitHub ne sont jamais exposés dans le code
