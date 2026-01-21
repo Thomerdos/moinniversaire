@@ -1,0 +1,220 @@
+name: Prévisualisation PR sur GitHub Pages
+
+on:
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+      
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Installation des dépendances
+        run: npm ci
+      
+      - name: Build du projet avec base path pour la PR
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /moinniversaire/pr-${{ github.event.pull_request.number }}/
+      
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+      
+      - name: Initialiser gh-pages si nécessaire
+        run: |
+          if [ ! -d "gh-pages/.git" ]; then
+            echo "La branche gh-pages n'existe pas, création..."
+            mkdir -p gh-pages
+            cd gh-pages
+            git init
+            git checkout -b gh-pages
+            
+            # Créer un fichier index.html de base
+            cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <title>Moinniversaire - Previews</title>
+            <style>
+              body { font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #667eea; }
+            </style>
+          </head>
+          <body>
+            <h1>🎉 Moinniversaire - GitHub Pages Previews</h1>
+            <p>Les previews des Pull Requests sont disponibles dans les sous-dossiers.</p>
+          </body>
+          </html>
+          EOF
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "Initialize gh-pages branch"
+            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git push -u origin gh-pages
+            cd ..
+          else
+            echo "Branche gh-pages existe déjà"
+          fi
+      
+      - name: Déployer la preview
+        run: |
+          # Créer le dossier pour cette PR
+          mkdir -p gh-pages/pr-${{ github.event.pull_request.number }}
+          
+          # Copier le build dans le dossier de la PR
+          cp -r dist/* gh-pages/pr-${{ github.event.pull_request.number }}/
+          
+          # Créer/mettre à jour l'index des previews
+          cd gh-pages
+          
+          # Créer un fichier index.html pour lister les previews si inexistant
+          if [ ! -f "previews.html" ]; then
+            cat > previews.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Previews - Moinniversaire</title>
+            <style>
+              body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #667eea; }
+              .preview { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 8px; }
+              .preview a { color: #667eea; text-decoration: none; font-weight: bold; }
+              .preview a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>🎉 Previews Moinniversaire</h1>
+            <p>Liste des previews disponibles pour les Pull Requests :</p>
+            <div id="previews"></div>
+          </body>
+          </html>
+          EOF
+          fi
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Deploy preview for PR #${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git push origin gh-pages
+      
+      - name: Commentaire sur la PR avec l'URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const previewUrl = `https://${{ github.repository_owner }}.github.io/moinniversaire/pr-${prNumber}/`;
+            
+            const comment = `## 🚀 Preview déployé sur GitHub Pages !
+            
+            ✅ Votre preview est maintenant disponible en ligne :
+            
+            ### 🔗 [Voir la preview](${previewUrl})
+            
+            **URL** : ${previewUrl}
+            
+            Cette preview est automatiquement mise à jour à chaque nouveau commit sur cette PR.
+            
+            ---
+            
+            📋 **Pages disponibles** :
+            - [📆 Est-ce le 18 ?](${previewUrl}#/)
+            - [💑 Temps ensemble](${previewUrl}#/temps-ensemble)
+            `;
+            
+            // Chercher un commentaire existant du bot
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Preview déployé sur GitHub Pages')
+            );
+            
+            if (botComment) {
+              // Mettre à jour le commentaire existant
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Créer un nouveau commentaire
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: comment
+              });
+            }
+  
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+      
+      - name: Supprimer la preview
+        run: |
+          if [ -d "gh-pages/.git" ]; then
+            cd gh-pages
+            rm -rf pr-${{ github.event.pull_request.number }}
+            
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Remove preview for PR #${{ github.event.pull_request.number }}" || echo "No changes to commit"
+            git push origin gh-pages
+          else
+            echo "Branche gh-pages n'existe pas, rien à supprimer"
+          fi
+      
+      - name: Commentaire de nettoyage
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            
+            const comment = `## 🧹 Preview nettoyé
+            
+            La preview pour cette PR a été supprimée de GitHub Pages.
+            `;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
+

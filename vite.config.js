@@ -7,5 +7,5 @@ export default defineConfig({
     UnoCSS(),
     vue(),
   ],
-  base: '/moinniversaire/',
+  base: process.env.VITE_BASE_PATH || '/moinniversaire/',
 })
