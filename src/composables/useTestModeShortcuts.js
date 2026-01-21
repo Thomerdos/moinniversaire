@@ -5,44 +5,29 @@ import { useTestModeStore } from '../stores/testMode'
  * Composable pour gérer les raccourcis clavier du mode test
  * 
  * Raccourcis disponibles:
- * - Ctrl+Shift+T (ou Cmd+Shift+T sur Mac): Toggle mode test
- * - Ctrl+Shift+1: Simuler le 18 du mois
- * - Ctrl+Shift+2: Simuler le Boulettes Jour (3 janvier)
+ * - Alt+T: Toggle mode test
+ * - Alt+1: Simuler le 18 du mois
+ * - Alt+2: Simuler le Boulettes Jour (3 janvier)
  * - Escape: Désactiver le mode test
  */
 export function useTestModeShortcuts() {
   const testModeStore = useTestModeStore()
   const keys = useMagicKeys()
 
-  // Ctrl+Shift+T ou Cmd+Shift+T pour toggle le mode test
-  whenever(keys['ctrl+shift+t'], () => {
+  // Alt+T pour toggle le mode test
+  whenever(keys['alt+t'], () => {
     testModeStore.toggle()
     showNotification(testModeStore.isEnabled ? 'Mode test activé 🧪' : 'Mode test désactivé')
   })
 
-  whenever(keys['meta+shift+t'], () => {
-    testModeStore.toggle()
-    showNotification(testModeStore.isEnabled ? 'Mode test activé 🧪' : 'Mode test désactivé')
-  })
-
-  // Ctrl+Shift+1 pour simuler le 18 du mois
-  whenever(keys['ctrl+shift+1'], () => {
+  // Alt+1 pour simuler le 18 du mois
+  whenever(keys['alt+1'], () => {
     testModeStore.simulate18th()
     showNotification('Simulation: 18 du mois 📅')
   })
 
-  whenever(keys['meta+shift+1'], () => {
-    testModeStore.simulate18th()
-    showNotification('Simulation: 18 du mois 📅')
-  })
-
-  // Ctrl+Shift+2 pour simuler le Boulettes Jour
-  whenever(keys['ctrl+shift+2'], () => {
-    testModeStore.simulateBoulettesJour()
-    showNotification('Simulation: Boulettes Jour 🍝')
-  })
-
-  whenever(keys['meta+shift+2'], () => {
+  // Alt+2 pour simuler le Boulettes Jour
+  whenever(keys['alt+2'], () => {
     testModeStore.simulateBoulettesJour()
     showNotification('Simulation: Boulettes Jour 🍝')
   })
