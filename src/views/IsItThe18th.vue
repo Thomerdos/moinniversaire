@@ -19,10 +19,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AnniversaryDisplay from '../components/AnniversaryDisplay.vue'
-
-const COUPLE_START_DATE = new Date(2025, 6, 18) // 18 juillet 2025
-const ANNIVERSARY_MONTH = 6 // Juillet (0-indexed)
-const CHECK_INTERVAL_MS = 3600000 // 1 heure en millisecondes
+import { COUPLE_START_DATE, ANNIVERSARY_MONTH, CHECK_INTERVAL_MS } from '../constants'
 
 const now = ref(new Date())
 const interval = ref(null)

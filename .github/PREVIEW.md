@@ -2,84 +2,64 @@
 
 ## Tester les modifications en ligne avant de merger
 
-Ce repository dispose de plusieurs options pour tester vos modifications en ligne avant de les fusionner dans la branche principale.
+Ce repository dispose d'un système automatique de preview sur GitHub Pages pour chaque Pull Request.
 
-## Option 1 : Netlify Drop (Recommandé - le plus simple)
+## 🚀 Preview Automatique sur GitHub Pages (Recommandé)
 
-C'est la méthode la plus rapide pour obtenir un aperçu en ligne :
+**C'est la méthode la plus simple !** Chaque PR déploie automatiquement une preview sur GitHub Pages.
+
+### Comment ça fonctionne :
+
+1. **Créez ou mettez à jour une PR** vers la branche `main`
+2. **Le workflow se déclenche automatiquement** et déploie votre preview
+3. **Un commentaire est posté sur la PR** avec l'URL de la preview
+4. **URL de la preview** : `https://thomerdos.github.io/moinniversaire/pr-[NUMERO]/`
+
+### Exemple :
+- PR #5 → `https://thomerdos.github.io/moinniversaire/pr-5/`
+- PR #12 → `https://thomerdos.github.io/moinniversaire/pr-12/`
+
+### Avantages :
+- ✅ **Automatique** : Aucune action manuelle requise
+- ✅ **Mise à jour automatique** : Chaque nouveau commit met à jour la preview
+- ✅ **URL stable** : L'URL reste la même pendant toute la durée de la PR
+- ✅ **Partageable** : Vous pouvez partager l'URL avec d'autres pour obtenir des retours
+- ✅ **Nettoyage automatique** : La preview est supprimée quand la PR est fermée/mergée
+- ✅ **Gratuit** : Hébergé sur GitHub Pages, aucun compte externe requis
+
+### Configuration requise :
+
+**Important** : Pour que les previews fonctionnent, GitHub Pages doit être configuré :
+
+1. Allez dans **Settings** > **Pages**
+2. Sous **Build and deployment** > **Source**, sélectionnez **Deploy from a branch**
+3. Sous **Branch**, sélectionnez **gh-pages** et **/ (root)**
+4. Cliquez sur **Save**
+
+Le workflow créera et gérera automatiquement la branche `gh-pages` avec les previews.
+
+## Alternative : Netlify Drop (Sans configuration)
+
+Si vous préférez ne pas utiliser GitHub Pages, vous pouvez toujours utiliser Netlify Drop :
 
 1. **Télécharger le build** :
    - Allez dans l'onglet **Actions** de la PR
-   - Cliquez sur le workflow "Prévisualisation PR"
-   - Téléchargez l'artifact `preview-build`
+   - ⚠️ Note : Le workflow actuel déploie directement sur GitHub Pages
+   - Pour télécharger un artifact, vous devrez exécuter `npm run build` localement
 
 2. **Déployer sur Netlify** :
    - Allez sur [drop.netlify.com](https://drop.netlify.com)
-   - Glissez-déposez le dossier `dist` extrait de l'artifact
-   - Netlify vous donnera une URL temporaire (ex: `https://random-name-123456.netlify.app`)
-   - L'URL reste active pendant 24 heures
+   - Glissez-déposez le dossier `dist`
+   - Netlify vous donne une URL temporaire (valide 24h)
 
-**Avantages** :
-- ✅ Gratuit et sans compte requis
-- ✅ URL partageable pour montrer aux autres
-- ✅ Prévisualisation en ligne en moins de 1 minute
+## Test local
 
-## Option 2 : Déploiement automatique avec Netlify (Configuration requise)
-
-Pour avoir des previews automatiques sur chaque PR, vous pouvez connecter le repository à Netlify :
-
-1. **Créer un compte Netlify** (gratuit) : [app.netlify.com](https://app.netlify.com)
-
-2. **Importer le repository** :
-   - New site from Git
-   - Sélectionnez GitHub et autorisez l'accès
-   - Choisissez le repository `moinniversaire`
-
-3. **Configurer le build** :
-   - Build command : `npm run build`
-   - Publish directory : `dist`
-   - Cliquez sur "Deploy site"
-
-4. **Activer les Deploy Previews** :
-   - Site settings > Build & deploy > Deploy contexts
-   - Activez "Deploy Previews"
-   - Maintenant chaque PR aura automatiquement une URL de preview !
-
-**Avantages** :
-- ✅ Previews automatiques sur chaque PR
-- ✅ URL unique par PR avec mise à jour automatique
-- ✅ Commentaire automatique sur la PR avec l'URL
-
-## Option 3 : GitHub Pages avec branche de test
-
-Vous pouvez tester sur GitHub Pages en créant une branche de test :
-
-1. **Créer une branche de test** :
-   ```bash
-   git checkout -b test/preview-changes
-   git merge copilot/add-couple-anniversary-page
-   git push origin test/preview-changes
-   ```
-
-2. **Configurer GitHub Pages** :
-   - Settings > Pages
-   - Source : Deploy from a branch
-   - Branch : `test/preview-changes`
-   - Folder : `/dist` (après avoir committé le build)
-
-3. **Accéder au site** :
-   - URL : `https://thomerdos.github.io/moinniversaire/`
-
-**Note** : Cette méthode nécessite de committer le dossier `dist`, ce qui n'est pas recommandé pour le long terme.
-
-## Option 4 : Test local
-
-Pour tester localement avant de merger :
+Pour tester localement avant de créer une PR :
 
 ```bash
-# Récupérer la branche de la PR
+# Récupérer la branche
 git fetch origin
-git checkout copilot/add-couple-anniversary-page
+git checkout [nom-de-la-branche]
 
 # Installer et lancer
 npm install
@@ -88,33 +68,35 @@ npm run dev
 # Ouvrir http://localhost:5173/moinniversaire/ dans votre navigateur
 ```
 
-**Avantages** :
-- ✅ Modifications en temps réel
-- ✅ Pas besoin de déploiement
-- ✅ Outils de développement disponibles
+## Workflow de développement recommandé
 
-**Inconvénients** :
-- ❌ Nécessite Node.js installé
-- ❌ Pas partageable facilement
+1. **Développez localement** avec `npm run dev`
+2. **Créez une PR** vers `main`
+3. **Attendez le déploiement automatique** (environ 1-2 minutes)
+4. **Testez en ligne** via l'URL de la preview GitHub Pages
+5. **Partagez l'URL** si vous voulez des retours
+6. **Mergez** quand tout est validé
+7. **La preview est automatiquement nettoyée** après le merge
 
-## Recommandation
+## Monitoring des previews
 
-Pour tester rapidement en ligne : **Utilisez Netlify Drop** (Option 1)
-- Aucune configuration requise
-- URL en ligne en moins d'1 minute
-- Parfait pour les tests rapides avant merge
+Toutes les previews actives sont accessibles depuis :
+- Le commentaire automatique sur chaque PR
+- La branche `gh-pages` qui contient tous les dossiers `pr-X/`
 
-Pour un workflow automatisé à long terme : **Configurez Netlify** (Option 2)
-- Previews automatiques sur chaque PR
-- Gain de temps sur le long terme
-- URLs partageables automatiquement
+## Résolution de problèmes
 
-## Workflow automatique actuel
+### Le workflow échoue
+- Vérifiez que GitHub Pages est activé dans Settings > Pages
+- Vérifiez les logs dans l'onglet **Actions**
+- Assurez-vous que la branche `gh-pages` existe
 
-Le workflow `.github/workflows/preview.yml` est déjà configuré et :
-- ✅ Se déclenche automatiquement sur chaque PR
-- ✅ Build le projet et crée un artifact
-- ✅ Poste un commentaire sur la PR avec les instructions
-- ✅ L'artifact est disponible pendant 7 jours
+### La preview affiche une erreur 404
+- Attendez 1-2 minutes après le déploiement (propagation)
+- Vérifiez que l'URL contient le bon numéro de PR
+- Vérifiez que GitHub Pages est configuré sur la branche `gh-pages`
 
-Il ne reste qu'à télécharger l'artifact et le déployer sur Netlify Drop pour avoir votre preview en ligne !
+### La preview ne se met pas à jour
+- Vérifiez que le workflow s'est exécuté dans l'onglet **Actions**
+- Essayez un hard refresh (Ctrl+F5 ou Cmd+Shift+R)
+- Videz le cache du navigateur

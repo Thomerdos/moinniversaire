@@ -53,9 +53,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-
-const COUPLE_START_DATE = new Date(2025, 6, 18) // 18 juillet 2025
-const CHECK_INTERVAL_MS = 3600000 // 1 heure en millisecondes
+import { COUPLE_START_DATE, CHECK_INTERVAL_MS } from '../constants'
 
 const now = ref(new Date())
 const interval = ref(null)
@@ -82,9 +80,20 @@ const weeksTogether = computed(() => {
 
 const monthsTogether = computed(() => {
   if (!hasStarted.value) return 0
-  const years = now.value.getFullYear() - COUPLE_START_DATE.getFullYear()
-  const months = now.value.getMonth() - COUPLE_START_DATE.getMonth()
-  return years * 12 + months
+  
+  const yearsDiff = now.value.getFullYear() - COUPLE_START_DATE.getFullYear()
+  const monthsDiff = now.value.getMonth() - COUPLE_START_DATE.getMonth()
+  const daysDiff = now.value.getDate() - COUPLE_START_DATE.getDate()
+  
+  // Calculate total months, accounting for incomplete months
+  let totalMonths = yearsDiff * 12 + monthsDiff
+  
+  // If we haven't reached the day yet in the current month, subtract one month
+  if (daysDiff < 0) {
+    totalMonths--
+  }
+  
+  return Math.max(0, totalMonths)
 })
 
 const yearsTogether = computed(() => {

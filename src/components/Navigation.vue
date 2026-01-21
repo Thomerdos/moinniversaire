@@ -5,14 +5,14 @@
         <router-link 
           to="/" 
           class="px-6 py-2 rounded-full transition-all duration-300 font-semibold"
-          :class="isActive('/') ? 'bg-purple-gradient-start text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+          :class="route.path === '/' ? 'bg-purple-gradient-start text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           📆 Le 18 ?
         </router-link>
         <router-link 
           to="/temps-ensemble" 
           class="px-6 py-2 rounded-full transition-all duration-300 font-semibold"
-          :class="isActive('/temps-ensemble') ? 'bg-pink-gradient-start text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+          :class="route.path === '/temps-ensemble' ? 'bg-pink-gradient-start text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           💑 Temps ensemble
         </router-link>
@@ -23,11 +23,6 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
-import { computed } from 'vue'
 
 const route = useRoute()
-
-const isActive = (path) => {
-  return computed(() => route.path === path)
-}
 </script>
