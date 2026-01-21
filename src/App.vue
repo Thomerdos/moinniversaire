@@ -35,8 +35,6 @@ const testModeStore = useTestModeStore()
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-top: 80px;
-  padding-bottom: 20px;
 }
 
 .test-mode-indicator {

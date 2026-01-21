@@ -219,17 +219,27 @@ const initPanzoom = () => {
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
   
-  // Scale to fill viewport (no empty space)
-  const scaleX = viewportWidth / canvasWidth
-  const scaleY = viewportHeight / canvasHeight
-  const fillScale = Math.max(scaleX, scaleY) * 1.15
+  // Calculate scale to fill the viewport completely
+  // We want photos to fill the screen, with some extending beyond for exploration
+  const scaleToFitWidth = viewportWidth / canvasWidth
+  const scaleToFitHeight = viewportHeight / canvasHeight
+  
+  // Use a scale that shows just a portion of the grid (2-4 photos visible)
+  // This means we want a higher scale than fitScreen
+  const idealScale = Math.max(scaleToFitWidth, scaleToFitHeight) * 1.3
+  
+  // Center the canvas so photos fill the screen from the start
+  const scaledWidth = canvasWidth * idealScale
+  const scaledHeight = canvasHeight * idealScale
+  const startX = (viewportWidth - scaledWidth) / 2
+  const startY = (viewportHeight - scaledHeight) / 2
   
   panzoomInstance = Panzoom(canvasRef.value, {
     maxScale: 5,
-    minScale: 0.4,
-    startScale: fillScale,
-    startX: 0,
-    startY: 0,
+    minScale: 0.3,
+    startScale: idealScale,
+    startX: startX,
+    startY: startY,
     cursor: 'grab',
     canvas: true,
     touchAction: 'none'

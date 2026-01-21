@@ -1,23 +1,25 @@
 <template>
-  <div class="text-center p-12 bg-white/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in">
-    <div class="text-[6rem] mb-6 animate-bounce-slow">{{ emoji }}</div>
-    <h1 class="text-4xl mb-4 text-gray-800">Est-ce le 18 du mois ?</h1>
-    <div class="text-5xl font-bold my-6" :class="is18 ? 'text-purple-gradient-start' : 'text-pink-gradient-end'">
-      {{ response }}
+  <div class="page-background" :class="is18 ? 'bg-18' : 'bg-not-18'">
+    <div class="text-center p-12 bg-white/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in">
+      <div class="text-[6rem] mb-6 animate-bounce-slow">{{ emoji }}</div>
+      <h1 class="text-4xl mb-4 text-gray-800">Est-ce le 18 du mois ?</h1>
+      <div class="text-5xl font-bold my-6" :class="is18 ? 'text-purple-gradient-start' : 'text-pink-gradient-end'">
+        {{ response }}
+      </div>
+      <div class="text-xl text-gray-600 mt-6">{{ dateInfo }}</div>
+      <div v-if="countdown" class="mt-4 text-base text-gray-500">{{ countdown }}</div>
+      <AnniversaryDisplay 
+        v-if="showAnniversary"
+        :months-together="monthsTogether"
+        :is-yearly-anniversary="isYearlyAnniversary"
+        :years-together="yearsTogether"
+      />
     </div>
-    <div class="text-xl text-gray-600 mt-6">{{ dateInfo }}</div>
-    <div v-if="countdown" class="mt-4 text-base text-gray-500">{{ countdown }}</div>
-    <AnniversaryDisplay 
-      v-if="showAnniversary"
-      :months-together="monthsTogether"
-      :is-yearly-anniversary="isYearlyAnniversary"
-      :years-together="yearsTogether"
-    />
   </div>
 </template>
 
 <script setup>
-import { computed, watch, onMounted } from 'vue'
+import { computed } from 'vue'
 import AnniversaryDisplay from '../components/AnniversaryDisplay.vue'
 import { useCurrentDate } from '../composables/useCurrentDate'
 import { COUPLE_START_DATE, ANNIVERSARY_MONTH } from '../constants'
@@ -71,15 +73,23 @@ const isYearlyAnniversary = computed(() =>
 )
 
 const yearsTogether = computed(() => year.value - COUPLE_START_DATE.getFullYear())
+</script>
 
-const updateBodyClass = () => {
-  document.body.className = is18.value ? 'is-18' : 'not-18'
+<style scoped>
+.page-background {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
 }
 
-// Mettre à jour la classe du body quand la date change
-watch([is18], updateBodyClass)
+.bg-18 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
-onMounted(() => {
-  updateBodyClass()
-})
-</script>
+.bg-not-18 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+</style>
