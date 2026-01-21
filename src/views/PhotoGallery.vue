@@ -1,5 +1,5 @@
 <template>
-  <div class="photo-gallery-container min-h-screen bg-gray-900 overflow-hidden" ref="containerRef">
+  <div class="photo-gallery-container min-h-screen overflow-hidden" ref="containerRef">
     <!-- Loading state -->
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
       <div class="text-center text-white">
@@ -26,24 +26,30 @@
         <button @click="resetZoom" class="zoom-btn reset-btn" title="Réinitialiser">⟲</button>
       </div>
 
-      <!-- Panzoom canvas -->
+      <!-- Panzoom canvas with column layout -->
       <div class="panzoom-canvas" ref="canvasRef" :style="canvasStyle">
         <div 
-          v-for="(photo, index) in gridPhotos" 
-          :key="photo.id"
-          class="photo-frame"
-          :style="photo.style"
-          @click.stop="handlePhotoClick(index, $event)"
+          v-for="(column, colIndex) in columns" 
+          :key="colIndex"
+          class="photo-column"
         >
-          <img 
-            :src="photo.thumbnail" 
-            :alt="photo.title || formatDate(photo.date)"
-            class="photo-image"
-            loading="lazy"
-            draggable="false"
-          />
-          <div class="photo-overlay">
-            <p v-if="photo.date" class="photo-date">{{ formatDate(photo.date) }}</p>
+          <div 
+            v-for="(photo, photoIndex) in column" 
+            :key="photo.id"
+            class="photo-frame"
+            @click.stop="handlePhotoClick(getPhotoGlobalIndex(colIndex, photoIndex), $event)"
+          >
+            <img 
+              :src="photo.thumbnail" 
+              :alt="photo.title || formatDate(photo.date)"
+              class="photo-image"
+              :style="{ height: photo.displayHeight + 'px' }"
+              loading="lazy"
+              draggable="false"
+            />
+            <div class="photo-overlay">
+              <p v-if="photo.date" class="photo-date">{{ formatDate(photo.date) }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -58,8 +64,9 @@ import PhotoSwipe from 'photoswipe'
 import 'photoswipe/style.css'
 
 // Layout constants
-const GOLDEN_ANGLE = 137.5 // For variety in masonry pattern
-const INITIAL_ZOOM_MULTIPLIER = 1.3 // Scale to fill viewport initially
+const COLUMN_WIDTH = 350 // Width of each column
+const NUM_COLUMNS = 5 // Number of columns
+const INITIAL_ZOOM = 1.0 // Start with natural zoom
 
 const loading = ref(true)
 const photos = ref([])
@@ -86,106 +93,72 @@ const shuffleArray = (array) => {
   return shuffled
 }
 
-// Seeded random for consistent masonry pattern
-const seededRandom = (seed) => {
-  const x = Math.sin(seed) * 10000
-  return x - Math.floor(x)
-}
-
-// Generate masonry-like layout - varied sizes but photos still touch
-const gridPhotos = computed(() => {
+// Distribute photos into columns (shortest column first)
+const columns = computed(() => {
   if (photos.value.length === 0) return []
   
   const shuffled = shuffleArray(photos.value)
-  const baseUnit = isMobile.value ? 180 : 280
+  const columnWidth = isMobile.value ? 200 : COLUMN_WIDTH
+  const numCols = isMobile.value ? 3 : NUM_COLUMNS
   
-  // Create a more organic masonry layout
-  // We'll use a bin-packing approach where photos have varied sizes
-  const positions = []
-  let currentX = 0
-  let currentY = 0
-  let rowHeight = 0
-  let maxWidth = isMobile.value ? 4 : 5 // max units per row
-  let rowItems = []
+  // Initialize columns with heights
+  const cols = Array.from({ length: numCols }, () => ({ photos: [], height: 0 }))
   
-  shuffled.forEach((photo, index) => {
-    // Vary size based on aspect ratio and some randomness
-    const ratio = photo.width / photo.height
-    const seed = index * GOLDEN_ANGLE
-    const randomFactor = seededRandom(seed)
+  shuffled.forEach((photo) => {
+    // Calculate display height based on aspect ratio
+    const aspectRatio = photo.width / photo.height
+    const displayHeight = columnWidth / aspectRatio
     
-    let widthUnits, heightUnits
-    
-    if (ratio > 1.3) {
-      // Wide landscape
-      widthUnits = randomFactor > 0.5 ? 2 : 1.5
-      heightUnits = 1
-    } else if (ratio < 0.75) {
-      // Tall portrait
-      widthUnits = 1
-      heightUnits = randomFactor > 0.5 ? 2 : 1.5
-    } else {
-      // Square-ish - vary sizes
-      const sizes = [1, 1.2, 1.5]
-      const sizeIndex = Math.floor(randomFactor * sizes.length)
-      widthUnits = sizes[sizeIndex]
-      heightUnits = sizes[(sizeIndex + 1) % sizes.length]
+    // Find shortest column
+    let shortestIndex = 0
+    let shortestHeight = cols[0].height
+    for (let i = 1; i < cols.length; i++) {
+      if (cols[i].height < shortestHeight) {
+        shortestHeight = cols[i].height
+        shortestIndex = i
+      }
     }
     
-    const width = widthUnits * baseUnit
-    const height = heightUnits * baseUnit
-    
-    // Simple row-based layout with varied heights
-    if (currentX + widthUnits > maxWidth && rowItems.length > 0) {
-      // Start new row
-      currentY += rowHeight
-      currentX = 0
-      rowHeight = 0
-      rowItems = []
-    }
-    
-    positions.push({
+    // Add photo to shortest column
+    cols[shortestIndex].photos.push({
       ...photo,
-      x: currentX * baseUnit,
-      y: currentY,
-      width,
-      height
+      displayHeight
     })
-    
-    currentX += widthUnits
-    rowHeight = Math.max(rowHeight, height)
-    rowItems.push(index)
+    cols[shortestIndex].height += displayHeight
   })
   
-  return positions.map((photo) => ({
-    ...photo,
-    style: {
-      left: `${photo.x}px`,
-      top: `${photo.y}px`,
-      width: `${photo.width}px`,
-      height: `${photo.height}px`,
-      zIndex: 1
-    }
-  }))
+  return cols.map(col => col.photos)
 })
 
-// Calculate canvas size based on masonry layout
+// Get global photo index for lightbox
+const getPhotoGlobalIndex = (colIndex, photoIndex) => {
+  let index = 0
+  for (let c = 0; c < colIndex; c++) {
+    index += columns.value[c].length
+  }
+  return index + photoIndex
+}
+
+// Flatten photos for lightbox
+const flatPhotos = computed(() => {
+  return columns.value.flat()
+})
+
+// Calculate canvas size
 const canvasStyle = computed(() => {
-  if (gridPhotos.value.length === 0) return { width: '100%', height: '100%' }
+  const columnWidth = isMobile.value ? 200 : COLUMN_WIDTH
+  const numCols = isMobile.value ? 3 : NUM_COLUMNS
   
-  let maxRight = 0
-  let maxBottom = 0
-  
-  gridPhotos.value.forEach(photo => {
-    const right = parseFloat(photo.style.left) + parseFloat(photo.style.width)
-    const bottom = parseFloat(photo.style.top) + parseFloat(photo.style.height)
-    maxRight = Math.max(maxRight, right)
-    maxBottom = Math.max(maxBottom, bottom)
+  // Calculate max column height
+  let maxHeight = 0
+  columns.value.forEach(col => {
+    const colHeight = col.reduce((sum, photo) => sum + photo.displayHeight, 0)
+    maxHeight = Math.max(maxHeight, colHeight)
   })
   
   return {
-    width: `${maxRight}px`,
-    height: `${maxBottom}px`
+    width: `${columnWidth * numCols}px`,
+    height: `${maxHeight}px`
   }
 })
 
@@ -215,33 +188,35 @@ const loadPhotos = async () => {
 const initPanzoom = () => {
   if (!canvasRef.value || !viewportRef.value) return
   
-  // Get canvas dimensions from computed style
-  const canvasDims = canvasStyle.value
-  const canvasWidth = parseFloat(canvasDims.width)
-  const canvasHeight = parseFloat(canvasDims.height)
+  const columnWidth = isMobile.value ? 200 : COLUMN_WIDTH
+  const numCols = isMobile.value ? 3 : NUM_COLUMNS
+  const canvasWidth = columnWidth * numCols
+  
+  // Calculate max column height
+  let canvasHeight = 0
+  columns.value.forEach(col => {
+    const colHeight = col.reduce((sum, photo) => sum + photo.displayHeight, 0)
+    canvasHeight = Math.max(canvasHeight, colHeight)
+  })
   
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
   
-  // Calculate scale to fill the viewport completely
-  // We want photos to fill the screen, with some extending beyond for exploration
-  const scaleToFitWidth = viewportWidth / canvasWidth
-  const scaleToFitHeight = viewportHeight / canvasHeight
+  // Calculate initial scale to fill the viewport
+  const scaleToFillWidth = viewportWidth / canvasWidth
+  const scaleToFillHeight = viewportHeight / canvasHeight
+  const initialScale = Math.max(scaleToFillWidth, scaleToFillHeight) * 1.1
   
-  // Use a scale that shows just a portion of the grid (2-4 photos visible)
-  // This means we want a higher scale than fitScreen
-  const idealScale = Math.max(scaleToFitWidth, scaleToFitHeight) * INITIAL_ZOOM_MULTIPLIER
-  
-  // Center the canvas so photos fill the screen from the start
-  const scaledWidth = canvasWidth * idealScale
-  const scaledHeight = canvasHeight * idealScale
+  // Center the canvas
+  const scaledWidth = canvasWidth * initialScale
+  const scaledHeight = canvasHeight * initialScale
   const startX = (viewportWidth - scaledWidth) / 2
   const startY = (viewportHeight - scaledHeight) / 2
   
   panzoomInstance = Panzoom(canvasRef.value, {
     maxScale: 5,
     minScale: 0.3,
-    startScale: idealScale,
+    startScale: initialScale,
     startX: startX,
     startY: startY,
     cursor: 'grab',
@@ -300,7 +275,7 @@ const handlePhotoClick = (index, event) => {
 const openLightbox = async (index) => {
   await nextTick()
   
-  const items = gridPhotos.value.map(photo => ({
+  const items = flatPhotos.value.map(photo => ({
     src: photo.src,
     width: photo.width || 1200,
     height: photo.height || 900,
@@ -398,40 +373,50 @@ onUnmounted(() => {
   font-size: 1.2rem;
 }
 
-/* Panzoom canvas - dynamic size based on grid */
+/* Panzoom canvas with columns */
 .panzoom-canvas {
-  position: relative;
+  display: flex;
+  flex-direction: row;
   transform-origin: 0 0;
 }
 
-/* Photo frame - tight grid, no gaps */
+/* Photo column - vertical layout */
+.photo-column {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 350px;
+}
+
+/* Photo frame - no gaps */
 .photo-frame {
-  position: absolute;
+  width: 100%;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
               box-shadow 0.3s ease,
               z-index 0s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .photo-frame:hover,
 .photo-frame:active {
-  transform: scale(1.1) !important;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
-  z-index: 1000 !important;
+  transform: scale(1.05);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
 }
 
 .photo-image {
   width: 100%;
-  height: 100%;
+  display: block;
   object-fit: cover;
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
 }
 
-/* Photo overlay - hidden on mobile for cleaner look */
+/* Photo overlay */
 .photo-overlay {
   position: absolute;
   bottom: 0;
@@ -456,7 +441,7 @@ onUnmounted(() => {
 
 /* Custom PhotoSwipe styles */
 :deep(.pswp) {
-  --pswp-bg: #0f0f23;
+  --pswp-bg: #1a1a2e;
 }
 
 :deep(.pswp__button) {
@@ -465,6 +450,10 @@ onUnmounted(() => {
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
+  .photo-column {
+    width: 200px;
+  }
+  
   .zoom-controls {
     bottom: 1rem;
     right: 1rem;
