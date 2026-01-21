@@ -33,7 +33,7 @@ const monthName = computed(() =>
   now.value.toLocaleDateString('fr-FR', { month: 'long' })
 )
 
-const emoji = computed(() => is18.value ? '🎊' : '📆')
+const emoji = computed(() => is18.value ? '🎊' : '🗓️')
 
 const response = computed(() => is18.value ? 'OUI ! 🎉' : 'Non 😔')
 
