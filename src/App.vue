@@ -22,6 +22,7 @@ import AnniversaryDisplay from './components/AnniversaryDisplay.vue'
 
 const COUPLE_START_DATE = new Date(2025, 6, 18) // 18 juillet 2025
 const ANNIVERSARY_MONTH = 6 // Juillet (0-indexed)
+const CHECK_INTERVAL_MS = 3600000 // 1 heure en millisecondes
 
 const now = ref(new Date())
 const interval = ref(null)
@@ -75,10 +76,10 @@ const showAnniversary = computed(() =>
 )
 
 const isYearlyAnniversary = computed(() => 
-  month.value === ANNIVERSARY_MONTH && year.value >= 2025
+  month.value === ANNIVERSARY_MONTH && year.value >= COUPLE_START_DATE.getFullYear()
 )
 
-const yearsTogether = computed(() => year.value - 2025)
+const yearsTogether = computed(() => year.value - COUPLE_START_DATE.getFullYear())
 
 const updateBodyClass = () => {
   document.body.className = is18.value ? 'is-18' : 'not-18'
@@ -92,7 +93,7 @@ const updateDate = () => {
 onMounted(() => {
   updateBodyClass()
   // Vérifier toutes les heures si la date a changé
-  interval.value = setInterval(updateDate, 3600000)
+  interval.value = setInterval(updateDate, CHECK_INTERVAL_MS)
 })
 
 onUnmounted(() => {
