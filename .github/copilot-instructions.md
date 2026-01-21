@@ -2,190 +2,301 @@
 
 ## Repository Overview
 
-This is a simple, single-page web application called "moinniversaire" (French for "my anniversary"). The repository contains a static HTML page that checks if the current day is the 18th of the month and displays a special anniversary message for a couple whose relationship started on July 18, 2025.
+This is a modern, single-page web application called "moinniversaire" (French for "my anniversary"). The repository contains a Vue.js application that checks if the current day is the 18th of the month and displays a special anniversary message for a couple whose relationship started on July 18, 2025.
 
-**Repository Type**: Static web application  
-**Size**: Small (single file)  
-**Languages**: HTML, CSS (embedded), JavaScript (embedded)  
+**Repository Type**: Modern Vue.js web application  
+**Size**: Small  
+**Languages**: JavaScript, Vue.js, CSS  
+**Build Tool**: Vite  
+**CSS Framework**: UnoCSS (atomic CSS engine, modern alternative to Tailwind)  
 **Target Runtime**: Web browser  
-**Deployment**: Static hosting (GitHub Pages compatible)
+**Deployment**: Static hosting (GitHub Pages, Netlify, Vercel compatible)
 
 ## Project Structure
 
 ```
-.
-├── index.html          # Main and only HTML file with embedded CSS and JavaScript
-└── .github/            # GitHub configuration directory
-    └── copilot-instructions.md  # This file
+moinniversaire/
+├── src/
+│   ├── components/
+│   │   └── AnniversaryDisplay.vue  # Component for anniversary messages
+│   ├── App.vue                     # Main application component
+│   ├── main.js                     # Entry point
+│   └── style.css                   # Global styles
+├── public/                         # Static assets
+├── index.html                      # HTML template
+├── uno.config.js                   # UnoCSS configuration
+├── vite.config.js                  # Vite configuration
+├── package.json                    # Dependencies and scripts
+├── package-lock.json               # Locked dependency versions
+├── .gitignore                      # Git ignore rules
+├── README.md                       # Project documentation
+└── .github/
+    └── copilot-instructions.md     # This file
 ```
 
 ## Key Features
 
-- **Date Checker**: Displays whether today is the 18th of the month
-- **Anniversary Tracker**: Calculates and displays months/years together since July 18, 2025
-- **Countdown**: Shows days until the next 18th when it's not the 18th
-- **Responsive Design**: Mobile-friendly with animations
+- **Date Checker**: Real-time check if today is the 18th of the month
+- **Anniversary Tracker**: Calculates months/years together since July 18, 2025
+- **Countdown**: Shows days until the next 18th
+- **Responsive Design**: Mobile-friendly modern interface
 - **Real-time Updates**: Checks date every hour automatically
+- **Vue 3 Composition API**: Modern reactive state management
+- **UnoCSS**: Instant atomic CSS with utility classes
+
+## Technology Stack
+
+- **Vue 3**: Progressive JavaScript framework with Composition API
+- **Vite**: Ultra-fast build tool and dev server (HMR support)
+- **UnoCSS**: Instant atomic CSS engine (alternative to Tailwind CSS)
+- **ES Modules**: Modern JavaScript module system
 
 ## Development Guidelines
 
-### File Organization
+### Setup and Installation
 
-- All code is contained in a single `index.html` file
-- CSS is embedded in `<style>` tags within the `<head>` section (lines 7-128)
-- JavaScript is embedded in `<script>` tags at the end of the `<body>` (lines 140-241)
-- The page is in French language (`lang="fr"`)
+**First time setup:**
+```bash
+# Install dependencies (ALWAYS do this first)
+npm install
+```
+
+**Development server:**
+```bash
+# Start dev server with hot module replacement
+npm run dev
+# Server runs on http://localhost:5173
+```
+
+**Production build:**
+```bash
+# Create optimized production build
+npm run build
+# Output goes to dist/ directory
+
+# Preview production build locally
+npm run preview
+```
 
 ### Important Constants
 
-When modifying the JavaScript, be aware of these key constants:
+When modifying the application logic, be aware of these key constants in `src/App.vue`:
 
 - `COUPLE_START_DATE`: Set to `new Date(2025, 6, 18)` (July 18, 2025)
 - `ANNIVERSARY_MONTH`: Set to `6` (July, 0-indexed)
+- `CHECK_INTERVAL_MS`: Set to `3600000` (1 hour in milliseconds)
+
+### Code Architecture
+
+**Component Structure:**
+
+- **`App.vue`**: Main component containing all date logic and state management
+  - Uses Vue 3 Composition API with `<script setup>` syntax
+  - Reactive state with `ref()` and computed properties
+  - Lifecycle hooks: `onMounted()`, `onUnmounted()`
+  - Handles interval-based date updates
+
+- **`AnniversaryDisplay.vue`**: Presentational component for anniversary messages
+  - Accepts props: `monthsTogether`, `isYearlyAnniversary`, `yearsTogether`
+  - Pure component with no internal state
+  - Computes appropriate message based on props
+
+**State Management:**
+
+- `now`: Reactive reference to current date/time
+- All display values are computed properties derived from `now`
+- Interval updates `now` every hour to keep UI in sync
+
+**Key Computed Properties:**
+
+1. `is18` - Boolean, true if current day is 18th
+2. `emoji` - Display emoji based on whether it's the 18th
+3. `response` - "OUI ! 🎉" or "Non 😔"
+4. `dateInfo` - Formatted current date string
+5. `daysUntilNext18` - Days countdown calculation
+6. `monthsTogether` - Total months since couple start date
+7. `showAnniversary` - Boolean for showing anniversary component
+
+### Styling with UnoCSS
+
+**UnoCSS Configuration (`uno.config.js`):**
+
+- Custom color palette for gradients:
+  - `purple-gradient-start` / `purple-gradient-end`
+  - `pink-gradient-start` / `pink-gradient-end`
+  - `peach-gradient-start` / `peach-gradient-end`
+
+- Custom animation shortcuts:
+  - `animate-fade-in`: 0.6s fade in
+  - `animate-bounce-slow`: 1s infinite bounce
+  - `animate-pulse-slow`: 2s infinite pulse
+
+**Using UnoCSS in components:**
+
+- Use utility classes directly in templates: `class="text-center p-12 bg-white/95"`
+- Responsive classes: `max-w-lg w-[90%]`
+- Custom values with brackets: `text-[6rem]`, `rounded-[30px]`
+- Gradient text: `:class="is18 ? 'text-purple-gradient-start' : 'text-pink-gradient-end'"`
 
 ### Code Style
 
-- **HTML**: Uses semantic structure with proper indentation
-- **CSS**: 
-  - Uses CSS custom properties would be inappropriate (not currently used)
-  - Mobile-first responsive design with viewport meta tag
-  - Animations: `fadeIn`, `bounce`, `pulse` keyframes
-  - Two color schemes: `.is-18` and `.not-18` classes on body
+- **Vue Components**: 
+  - Use `<script setup>` syntax for Composition API
+  - Single File Components (.vue files)
+  - Props defined with `defineProps()`
+  - Computed properties for derived state
+
 - **JavaScript**:
-  - Vanilla JavaScript (no frameworks)
-  - Functions are well-named and single-purpose
-  - Uses French date formatting with `toLocaleDateString('fr-FR')`
-  - Updates every hour via `setInterval(checkDate, 3600000)`
+  - ES6+ syntax (arrow functions, destructuring, const/let)
+  - Composition API patterns
+  - French date formatting with `toLocaleDateString('fr-FR')`
+  - Clear, descriptive variable and function names
 
-### Making Changes
+- **CSS/Styling**:
+  - UnoCSS utility classes in templates
+  - Global styles in `src/style.css`
+  - Body classes dynamically set: `.is-18` / `.not-18`
 
-**When modifying the page:**
+### Testing and Validation
 
-1. **Testing**: Open `index.html` directly in a web browser to test changes
-2. **No Build Step**: This is a static HTML file - no compilation or bundling needed
-3. **No Dependencies**: No package.json, no npm install, no node_modules
-4. **No Linting**: No configured linters (can use browser DevTools for validation)
+**Development testing:**
+
+1. Run `npm install` (if dependencies not installed)
+2. Run `npm run dev`
+3. Open browser to `http://localhost:5173`
+4. Test different viewports for responsiveness
+5. Check browser console for errors
+6. Verify animations and transitions work
+
+**Production testing:**
+
+1. Run `npm run build`
+2. Run `npm run preview`
+3. Test the production build
+4. Verify all features work correctly
 
 **To test date-specific behavior:**
 
-- Modify the JavaScript date logic temporarily, or
-- Use browser DevTools to override `new Date()` behavior, or
-- Change your system date (not recommended)
+- Temporarily modify `now.value` in `App.vue`
+- Use browser DevTools to override `Date` constructor
+- Mock the `updateDate()` function for specific dates
 
 ### Common Tasks
 
-**Preview the page:**
-```bash
-# Option 1: Open directly in browser
-open index.html  # macOS
-xdg-open index.html  # Linux
-start index.html  # Windows
-
-# Option 2: Use a simple HTTP server
-python3 -m http.server 8000
-# Then visit http://localhost:8000
+**Add a new computed property:**
+```javascript
+const myComputed = computed(() => {
+  // Your logic here
+  return someValue
+})
 ```
 
-**Validate HTML:**
-```bash
-# No specific validation configured, but you can use online validators
-# or browser DevTools console for errors
+**Modify the date check interval:**
+```javascript
+// In App.vue
+const CHECK_INTERVAL_MS = 3600000 // Change this value (in milliseconds)
 ```
 
-**Check for JavaScript errors:**
-- Open browser DevTools (F12)
-- Check Console tab for any errors
-- Verify date display and animations work correctly
+**Change the couple start date:**
+```javascript
+// In App.vue
+const COUPLE_START_DATE = new Date(YEAR, MONTH-1, 18)
+// Note: JavaScript months are 0-indexed
+```
 
-### Key Functions
-
-**Main Functions in JavaScript:**
-
-1. `checkDate()` - Main function that runs on load and every hour
-2. `updateDateDisplay()` - Updates the UI based on current date
-3. `updateAnniversaryDisplay()` - Shows anniversary message if applicable
-4. `getMonthsDifference()` - Calculates months between two dates
-5. `getDaysUntilNext18()` - Calculates days until next 18th
-
-### Styling Notes
-
-**CSS Classes:**
-
-- `.container` - Main content wrapper
-- `.emoji` - Large animated emoji display
-- `.response` - YES/NO answer text
-- `.date-info` - Current date display
-- `.countdown` - Days until next 18th
-- `.anniversary` - Anniversary message (hidden by default)
-- `.is-18` / `.not-18` - Body classes that change background gradient
-- `.hidden` - Utility class to hide elements
-
-**Animations:**
-
-- `fadeIn` - Container entrance animation (0.6s)
-- `bounce` - Emoji bounce effect (1s infinite)
-- `pulse` - Anniversary box pulse effect (2s infinite)
+**Add new UnoCSS utility classes:**
+```javascript
+// In uno.config.js
+shortcuts: {
+  'my-custom-class': 'text-xl p-4 bg-blue-500',
+}
+```
 
 ### Best Practices for This Repository
 
-1. **Keep it simple**: This is intentionally a single-file application
-2. **Maintain responsiveness**: Test on mobile viewports
-3. **Preserve animations**: The animations are part of the charm
-4. **French language**: Keep all user-facing text in French
-5. **No external dependencies**: Don't add libraries unless absolutely necessary
-6. **Browser compatibility**: Use widely-supported JavaScript/CSS features
+1. **Always run `npm install` before starting development**
+2. **Use `npm run dev` for development** - enables hot module replacement
+3. **French language**: Keep all user-facing text in French
+4. **Component composition**: Keep components small and focused
+5. **Reactive patterns**: Use Vue's reactive system, don't manipulate DOM directly
+6. **UnoCSS utilities**: Prefer utility classes over custom CSS
+7. **Type safety**: Consider adding TypeScript if complexity grows
+8. **Test in browser**: Always verify changes in actual browser
 
-### Validation
+### File-Specific Guidelines
 
-**Before committing changes:**
+**`src/App.vue`:**
+- Main application logic and state
+- All date calculations live here
+- Manages interval for time updates
+- Clean up intervals in `onUnmounted()`
 
-1. Open `index.html` in at least one modern browser (Chrome, Firefox, Safari, Edge)
-2. Check the Console for JavaScript errors
-3. Verify the page displays correctly on both desktop and mobile viewports
-4. Test that animations work smoothly
-5. Verify date calculations are correct (if modified)
+**`src/components/AnniversaryDisplay.vue`:**
+- Pure presentational component
+- Only accepts props, no internal state
+- Computes display message from props
 
-### Common Modifications
+**`uno.config.js`:**
+- Configure custom colors and shortcuts
+- Use theme colors consistently across components
+- Animation shortcuts for reusable animations
 
-**To change the couple start date:**
-```javascript
-const COUPLE_START_DATE = new Date(YEAR, MONTH-1, 18);
-// Note: JavaScript months are 0-indexed, so January = 0, July = 6
-```
-
-**To modify styling:**
-- Locate the `<style>` section (lines 7-128)
-- Modify CSS properties within the relevant selector
-- Test in browser to ensure changes work as expected
-
-**To adjust update frequency:**
-```javascript
-setInterval(checkDate, MILLISECONDS); // Currently 3600000 = 1 hour
-```
+**`vite.config.js`:**
+- Base path set to `'./'` for relative paths
+- UnoCSS plugin must be listed before Vue plugin
+- Keep configuration minimal
 
 ### Troubleshooting
 
-**Issue: Date not displaying correctly**
-- Check JavaScript console for errors
-- Verify date formatting in `toLocaleDateString()` calls
-- Ensure browser supports the date formatting options used
+**Issue: `npm run dev` fails**
+- Solution: Run `npm install` first to ensure dependencies are installed
+- Check Node.js version (should be 16+ recommended)
 
-**Issue: Animations not working**
-- Check if CSS animations are supported in the browser
-- Verify keyframe definitions are correct
-- Check for any CSS syntax errors
+**Issue: Changes not reflecting in browser**
+- Solution: Vite has HMR enabled, but hard refresh (Ctrl+F5) if needed
+- Check browser console for errors
 
-**Issue: Page shows "undefined" or blank values**
-- Check JavaScript console for errors
-- Verify all DOM elements exist with correct IDs
-- Ensure date calculations don't produce NaN
+**Issue: UnoCSS classes not working**
+- Solution: Verify class names in UnoCSS presets documentation
+- Check `uno.config.js` for custom configurations
+- Restart dev server after config changes
+
+**Issue: Build fails**
+- Solution: Run `npm install` to ensure all dev dependencies are present
+- Check for syntax errors in .vue files
+- Verify all imports are correct
+
+**Issue: Date calculations incorrect**
+- Solution: JavaScript months are 0-indexed (January = 0)
+- Verify `COUPLE_START_DATE` is set correctly
+- Check computed properties logic in `App.vue`
+
+### Validation Checklist
+
+**Before committing changes:**
+
+1. ✅ Run `npm install` (if new dependencies added)
+2. ✅ Run `npm run dev` and test in browser
+3. ✅ Check console for errors or warnings
+4. ✅ Test responsive design (mobile, tablet, desktop)
+5. ✅ Verify all animations work smoothly
+6. ✅ Test date calculations if modified
+7. ✅ Run `npm run build` to ensure production build works
+8. ✅ Verify French language text is correct
 
 ## Additional Notes
 
-- This repository has no CI/CD pipeline configured
-- No automated tests are present
-- No GitHub Actions workflows exist
-- The application is purely client-side with no backend
-- No data persistence or cookies are used
+- **No test suite configured**: Manual testing in browser is required
+- **No CI/CD pipeline**: Consider adding GitHub Actions for automated builds
+- **No linting configured**: Consider adding ESLint and Prettier for code quality
+- **Client-side only**: No backend or API calls
+- **No state persistence**: Date calculations are real-time only
 
-When working with this repository, **always test changes by opening the HTML file in a browser** before committing. There are no build or test commands to run.
+## Deployment
+
+**Build for production:**
+```bash
+npm run build
+```
+
+The `dist/` directory will contain the optimized production build ready for deployment to any static hosting service (GitHub Pages, Netlify, Vercel, etc.).
