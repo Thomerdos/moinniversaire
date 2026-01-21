@@ -282,15 +282,26 @@ const openLightbox = async (index) => {
     alt: photo.title || formatDate(photo.date),
   }))
 
+  // Smaller padding on mobile to maximize image display
+  const mobilePadding = { top: 0, bottom: 0, left: 0, right: 0 }
+  const desktopPadding = { top: 20, bottom: 20, left: 20, right: 20 }
+
   const pswp = new PhotoSwipe({
     dataSource: items,
     index: index,
-    bgOpacity: 0.95,
+    bgOpacity: 1,
     showHideAnimationType: 'zoom',
     // Mobile-friendly options
     pinchToClose: true,
     closeOnVerticalDrag: true,
-    padding: { top: 20, bottom: 20, left: 10, right: 10 }
+    padding: isMobile.value ? mobilePadding : desktopPadding,
+    // Ensure images fit properly without distortion
+    imageClickAction: 'zoom',
+    tapAction: 'toggle-controls',
+    // Better zoom settings
+    initialZoomLevel: 'fit',
+    secondaryZoomLevel: 2,
+    maxZoomLevel: 4
   })
 
   pswp.init()
@@ -446,6 +457,17 @@ onUnmounted(() => {
 
 :deep(.pswp__button) {
   color: white;
+}
+
+/* Ensure images fill properly on mobile */
+:deep(.pswp__img) {
+  object-fit: contain !important;
+}
+
+:deep(.pswp__zoom-wrap) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Mobile adjustments */
