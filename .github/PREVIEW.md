@@ -4,9 +4,32 @@
 
 Ce repository dispose d'un système automatique de preview sur GitHub Pages pour chaque Pull Request.
 
-## 🚀 Preview Automatique sur GitHub Pages (Recommandé)
+## 🚀 Configuration initiale (IMPORTANT)
 
-**C'est la méthode la plus simple !** Chaque PR déploie automatiquement une preview sur GitHub Pages.
+### Option 1 : Laisser le workflow créer la branche automatiquement
+
+**C'est la méthode la plus simple !** Quand vous créerez votre première PR vers `main`, le workflow détectera que la branche `gh-pages` n'existe pas et la créera automatiquement.
+
+Après que la première PR ait créé la branche :
+1. Allez dans **Settings** > **Pages**
+2. Sous **Build and deployment** > **Source**, sélectionnez **Deploy from a branch**
+3. Sous **Branch**, sélectionnez **gh-pages** et **/ (root)**
+4. Cliquez sur **Save**
+
+### Option 2 : Créer la branche manuellement avec un workflow
+
+Si vous préférez initialiser la branche avant de créer des PR :
+
+1. Allez dans l'onglet **Actions** du repository
+2. Sélectionnez le workflow **"Initialiser gh-pages"** dans la liste à gauche
+3. Cliquez sur **"Run workflow"** > **"Run workflow"**
+4. Attendez ~30 secondes que le workflow se termine
+5. La branche `gh-pages` est maintenant créée !
+6. Allez dans **Settings** > **Pages** et configurez comme ci-dessus
+
+## Preview Automatique sur GitHub Pages
+
+Une fois la configuration initiale faite, chaque PR déploie automatiquement une preview.
 
 ### Comment ça fonctionne :
 
