@@ -16,7 +16,8 @@ Une application moderne en Vue.js pour vérifier si c'est le 18 du mois et suivr
 - **Vue 3** - Framework JavaScript progressif
 - **Vite** - Build tool ultra-rapide
 - **Composition API** - API moderne de Vue 3
-- **CSS Animations** - Animations fluides
+- **UnoCSS** - Moteur CSS atomique instantané, alternative moderne à Tailwind
+- **Animations CSS** - Animations fluides
 
 ## 📦 Installation
 
@@ -56,6 +57,7 @@ moinniversaire/
 │   └── style.css                    # Styles globaux
 ├── public/                          # Fichiers statiques
 ├── index.html                       # Template HTML
+├── uno.config.js                    # Configuration UnoCSS
 ├── vite.config.js                   # Configuration Vite
 └── package.json                     # Dépendances et scripts
 ```

@@ -1,8 +1,8 @@
 <template>
-  <div class="anniversary">
-    <div class="hearts">{{ heartEmojis }}</div>
+  <div class="mt-8 p-6 rounded-2xl text-[1.3rem] font-bold text-red-600 animate-pulse-slow bg-gradient-to-br from-peach-gradient-start to-peach-gradient-end">
+    <div class="text-2xl my-2">{{ heartEmojis }}</div>
     <div v-html="message"></div>
-    <div class="hearts">{{ heartEmojis }}</div>
+    <div class="text-2xl my-2">{{ heartEmojis }}</div>
   </div>
 </template>
 
@@ -40,30 +40,3 @@ const message = computed(() => {
   }
 })
 </script>
-
-<style scoped>
-.anniversary {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  border-radius: 15px;
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #d63031;
-  animation: pulse 2s ease infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-}
-
-.hearts {
-  font-size: 1.5rem;
-  margin: 0.5rem 0;
-}
-</style>

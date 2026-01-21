@@ -1,12 +1,12 @@
 <template>
-  <div class="container">
-    <div class="emoji">{{ emoji }}</div>
-    <h1>Est-ce le 18 du mois ?</h1>
-    <div class="response" :class="is18 ? 'is-18-text' : 'not-18-text'">
+  <div class="text-center p-12 bg-white/95 rounded-[30px] shadow-2xl max-w-lg w-[90%] animate-fade-in">
+    <div class="text-[6rem] mb-6 animate-bounce-slow">{{ emoji }}</div>
+    <h1 class="text-4xl mb-4 text-gray-800">Est-ce le 18 du mois ?</h1>
+    <div class="text-5xl font-bold my-6" :class="is18 ? 'text-purple-gradient-start' : 'text-pink-gradient-end'">
       {{ response }}
     </div>
-    <div class="date-info">{{ dateInfo }}</div>
-    <div class="countdown" v-if="countdown">{{ countdown }}</div>
+    <div class="text-xl text-gray-600 mt-6">{{ dateInfo }}</div>
+    <div v-if="countdown" class="mt-4 text-base text-gray-500">{{ countdown }}</div>
     <AnniversaryDisplay 
       v-if="showAnniversary"
       :months-together="monthsTogether"
@@ -102,74 +102,3 @@ onUnmounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.container {
-  text-align: center;
-  padding: 3rem;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 30px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-  width: 90%;
-  animation: fadeIn 0.6s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.emoji {
-  font-size: 6rem;
-  margin-bottom: 1.5rem;
-  animation: bounce 1s ease infinite;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-.response {
-  font-size: 3rem;
-  font-weight: bold;
-  margin: 1.5rem 0;
-}
-
-.is-18-text {
-  color: #667eea;
-}
-
-.not-18-text {
-  color: #f5576c;
-}
-
-.date-info {
-  font-size: 1.2rem;
-  color: #666;
-  margin-top: 1.5rem;
-}
-
-.countdown {
-  margin-top: 1rem;
-  font-size: 1rem;
-  color: #888;
-}
-</style>
