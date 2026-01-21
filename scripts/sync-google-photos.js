@@ -2,32 +2,40 @@
  * Script to sync photos from a Google Photos album
  * 
  * Required environment variables:
- * - GOOGLE_CLIENT_ID: OAuth 2.0 Client ID
- * - GOOGLE_CLIENT_SECRET: OAuth 2.0 Client Secret
- * - GOOGLE_REFRESH_TOKEN: Refresh token for the authorized user
+ * - SERVICE_ACCOUNT_KEY: JSON key file content for Google Service Account
  * - GOOGLE_PHOTOS_ALBUM_ID: ID of the album to sync
+ * - GOOGLE_USER_EMAIL: Email of the user whose photos to access (for domain-wide delegation)
  * 
- * To get these credentials:
+ * IMPORTANT: Google Photos Library API requires domain-wide delegation for service accounts.
+ * This only works with Google Workspace accounts, not personal Gmail accounts.
+ * 
+ * Setup instructions:
  * 1. Go to https://console.cloud.google.com/
  * 2. Create a new project or select an existing one
- * 3. Enable the Google Photos Library API
- * 4. Create OAuth 2.0 credentials (Desktop application)
- * 5. Use the OAuth Playground or a script to get a refresh token
- * 6. Find your album ID by listing albums with the API
+ * 3. Enable the "Photos Library API"
+ * 4. Create a Service Account and download the JSON key
+ * 5. In Google Workspace Admin Console:
+ *    - Go to Security > API Controls > Domain-wide delegation
+ *    - Add a new API client with the service account's Client ID
+ *    - Add scope: https://www.googleapis.com/auth/photoslibrary.readonly
+ * 6. Add the service account JSON as the SERVICE_ACCOUNT_KEY secret
+ * 7. Add the target user's email as GOOGLE_USER_EMAIL secret
+ * 8. Add the album ID as GOOGLE_PHOTOS_ALBUM_ID secret
+ * 
+ * For personal Gmail accounts, use OAuth 2.0 instead (see docs/GOOGLE_PHOTOS_SETUP.md)
  */
 
 import { google } from 'googleapis';
 import fs from 'fs';
 
 const {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_REFRESH_TOKEN,
-  GOOGLE_PHOTOS_ALBUM_ID
+  SERVICE_ACCOUNT_KEY,
+  GOOGLE_PHOTOS_ALBUM_ID,
+  GOOGLE_USER_EMAIL
 } = process.env;
 
 // Check for required environment variables
-const requiredEnvVars = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'GOOGLE_PHOTOS_ALBUM_ID'];
+const requiredEnvVars = ['SERVICE_ACCOUNT_KEY', 'GOOGLE_PHOTOS_ALBUM_ID', 'GOOGLE_USER_EMAIL'];
 const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 
 if (missingVars.length > 0) {
@@ -47,21 +55,28 @@ if (missingVars.length > 0) {
   process.exit(0);
 }
 
-// Initialize OAuth2 client
-const oauth2Client = new google.auth.OAuth2(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET
-);
+// Parse service account credentials
+let serviceAccountCredentials;
+try {
+  serviceAccountCredentials = JSON.parse(SERVICE_ACCOUNT_KEY);
+} catch (error) {
+  console.error('Failed to parse SERVICE_ACCOUNT_KEY JSON:', error.message);
+  process.exit(1);
+}
 
-oauth2Client.setCredentials({
-  refresh_token: GOOGLE_REFRESH_TOKEN
+// Initialize JWT client with domain-wide delegation
+const auth = new google.auth.JWT({
+  email: serviceAccountCredentials.client_email,
+  key: serviceAccountCredentials.private_key,
+  scopes: ['https://www.googleapis.com/auth/photoslibrary.readonly'],
+  subject: GOOGLE_USER_EMAIL // Impersonate this user (requires domain-wide delegation)
 });
 
 // Google Photos API base URL
 const PHOTOS_API_BASE = 'https://photoslibrary.googleapis.com/v1';
 
 async function getAccessToken() {
-  const { token } = await oauth2Client.getAccessToken();
+  const { token } = await auth.getAccessToken();
   return token;
 }
 

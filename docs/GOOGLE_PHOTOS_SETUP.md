@@ -2,33 +2,105 @@
 
 Ce guide explique comment configurer la synchronisation automatique des photos depuis un album Google Photos.
 
-## Prérequis
+## ⚠️ Important : Limitation de l'API Google Photos
 
-1. Un compte Google avec accès à Google Photos
-2. Un album Google Photos contenant les photos à afficher
+L'API Google Photos Library **ne supporte pas nativement les comptes de service** pour les comptes Gmail personnels. Les comptes de service fonctionnent uniquement avec **Google Workspace** via la délégation au niveau du domaine.
 
-## Étape 1 : Créer un projet Google Cloud
+### Option A : Compte Google Workspace (avec Service Account)
+
+Si vous avez un compte Google Workspace, suivez les instructions ci-dessous pour utiliser un compte de service.
+
+### Option B : Compte Gmail personnel
+
+Pour les comptes Gmail personnels, vous devrez utiliser OAuth 2.0. Voir la section "Configuration OAuth 2.0 (Alternative)" en bas de ce document.
+
+---
+
+## Configuration avec Service Account (Google Workspace uniquement)
+
+### Prérequis
+
+1. Un compte **Google Workspace** (pas un compte Gmail personnel)
+2. Accès à la console d'administration Google Workspace
+3. Un album Google Photos contenant les photos à afficher
+
+### Étape 1 : Créer un projet Google Cloud
 
 1. Rendez-vous sur [Google Cloud Console](https://console.cloud.google.com/)
 2. Créez un nouveau projet ou sélectionnez un projet existant
 3. Activez l'API "Photos Library API" dans la bibliothèque d'API
 
-## Étape 2 : Configurer l'écran de consentement OAuth
-
-1. Allez dans "APIs & Services" → "OAuth consent screen"
-2. Choisissez "External" comme type d'utilisateur
-3. Remplissez les informations requises (nom de l'application, email)
-4. Ajoutez le scope : `https://www.googleapis.com/auth/photoslibrary.readonly`
-5. Ajoutez votre adresse email comme utilisateur de test
-
-## Étape 3 : Créer des identifiants OAuth 2.0
+### Étape 2 : Créer un compte de service
 
 1. Allez dans "APIs & Services" → "Credentials"
+2. Cliquez sur "Create Credentials" → "Service Account"
+3. Donnez un nom au compte de service
+4. Cliquez sur "Create and Continue"
+5. Pas besoin d'ajouter de rôles, cliquez sur "Continue" puis "Done"
+6. Cliquez sur le compte de service créé
+7. Allez dans l'onglet "Keys"
+8. Cliquez sur "Add Key" → "Create new key" → "JSON"
+9. Téléchargez le fichier JSON (gardez-le en sécurité !)
+10. Notez le "Client ID" du compte de service (visible dans les détails)
+
+### Étape 3 : Configurer la délégation au niveau du domaine
+
+1. Connectez-vous à [Google Admin Console](https://admin.google.com/)
+2. Allez dans "Security" → "API Controls" → "Domain-wide delegation"
+3. Cliquez sur "Add new"
+4. Entrez le **Client ID** du compte de service
+5. Ajoutez le scope OAuth : `https://www.googleapis.com/auth/photoslibrary.readonly`
+6. Cliquez sur "Authorize"
+
+### Étape 4 : Trouver l'ID de votre album
+
+Utilisez l'API Explorer ou OAuth Playground pour lister vos albums :
+```
+GET https://photoslibrary.googleapis.com/v1/albums
+```
+
+L'ID de l'album sera dans la réponse JSON.
+
+### Étape 5 : Configurer les secrets GitHub
+
+Ajoutez ces secrets dans votre repository GitHub (Settings → Secrets and variables → Actions) :
+
+| Secret | Description |
+|--------|-------------|
+| `SERVICE_ACCOUNT_KEY` | Contenu complet du fichier JSON du compte de service |
+| `GOOGLE_USER_EMAIL` | Email de l'utilisateur dont les photos seront accessibles |
+| `GOOGLE_PHOTOS_ALBUM_ID` | ID de l'album à synchroniser |
+
+### Étape 6 : Déclencher la synchronisation
+
+La synchronisation s'exécute automatiquement :
+- **Quotidiennement** à 3h UTC
+- **Manuellement** via l'onglet "Actions" de GitHub
+
+Pour déclencher manuellement :
+1. Allez dans l'onglet "Actions" de votre repository
+2. Sélectionnez le workflow "Sync Google Photos"
+3. Cliquez sur "Run workflow"
+
+---
+
+## Configuration OAuth 2.0 (Alternative pour comptes Gmail personnels)
+
+Si vous n'avez pas Google Workspace, vous pouvez utiliser OAuth 2.0 en modifiant le script.
+
+### Prérequis
+
+1. Un compte Google avec accès à Google Photos
+2. Un album Google Photos contenant les photos à afficher
+
+### Étape 1 : Créer des identifiants OAuth
+
+1. Dans Google Cloud Console, allez dans "APIs & Services" → "Credentials"
 2. Cliquez sur "Create Credentials" → "OAuth client ID"
 3. Choisissez "Desktop app" comme type d'application
 4. Téléchargez le fichier JSON des identifiants
 
-## Étape 4 : Obtenir un Refresh Token
+### Étape 2 : Obtenir un Refresh Token
 
 Utilisez le [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) :
 
@@ -41,36 +113,11 @@ Utilisez le [OAuth 2.0 Playground](https://developers.google.com/oauthplayground
 7. Cliquez sur "Exchange authorization code for tokens"
 8. Copiez le "Refresh token"
 
-## Étape 5 : Trouver l'ID de votre album
+### Étape 3 : Modifier le workflow
 
-Vous pouvez lister vos albums avec une requête API. Utilisez le OAuth Playground pour faire une requête GET à :
-```
-https://photoslibrary.googleapis.com/v1/albums
-```
+Modifiez `.github/workflows/sync-google-photos.yml` pour utiliser OAuth au lieu du compte de service.
 
-L'ID de l'album sera dans la réponse JSON.
-
-## Étape 6 : Configurer les secrets GitHub
-
-Ajoutez ces secrets dans votre repository GitHub (Settings → Secrets and variables → Actions) :
-
-| Secret | Description |
-|--------|-------------|
-| `GOOGLE_CLIENT_ID` | Client ID OAuth 2.0 |
-| `GOOGLE_CLIENT_SECRET` | Client Secret OAuth 2.0 |
-| `GOOGLE_REFRESH_TOKEN` | Refresh token obtenu à l'étape 4 |
-| `GOOGLE_PHOTOS_ALBUM_ID` | ID de l'album à synchroniser |
-
-## Étape 7 : Déclencher la synchronisation
-
-La synchronisation s'exécute automatiquement :
-- **Quotidiennement** à 3h UTC
-- **Manuellement** via l'onglet "Actions" de GitHub
-
-Pour déclencher manuellement :
-1. Allez dans l'onglet "Actions" de votre repository
-2. Sélectionnez le workflow "Sync Google Photos"
-3. Cliquez sur "Run workflow"
+---
 
 ## Notes importantes
 

@@ -28,10 +28,9 @@ jobs:
 
       - name: Fetch photos from Google Photos
         env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          SERVICE_ACCOUNT_KEY: ${{ secrets.SERVICE_ACCOUNT_KEY }}
           GOOGLE_PHOTOS_ALBUM_ID: ${{ secrets.GOOGLE_PHOTOS_ALBUM_ID }}
+          GOOGLE_USER_EMAIL: ${{ secrets.GOOGLE_USER_EMAIL }}
         run: node scripts/sync-google-photos.js
 
       - name: Commit and push if changed
