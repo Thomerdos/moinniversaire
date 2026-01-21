@@ -57,6 +57,10 @@ import Panzoom from '@panzoom/panzoom'
 import PhotoSwipe from 'photoswipe'
 import 'photoswipe/style.css'
 
+// Layout constants
+const GOLDEN_ANGLE = 137.5 // For variety in masonry pattern
+const INITIAL_ZOOM_MULTIPLIER = 1.3 // Scale to fill viewport initially
+
 const loading = ref(true)
 const photos = ref([])
 const containerRef = ref(null)
@@ -107,7 +111,7 @@ const gridPhotos = computed(() => {
   shuffled.forEach((photo, index) => {
     // Vary size based on aspect ratio and some randomness
     const ratio = photo.width / photo.height
-    const seed = index * 137.5 // Golden angle for variety
+    const seed = index * GOLDEN_ANGLE
     const randomFactor = seededRandom(seed)
     
     let widthUnits, heightUnits
@@ -226,7 +230,7 @@ const initPanzoom = () => {
   
   // Use a scale that shows just a portion of the grid (2-4 photos visible)
   // This means we want a higher scale than fitScreen
-  const idealScale = Math.max(scaleToFitWidth, scaleToFitHeight) * 1.3
+  const idealScale = Math.max(scaleToFitWidth, scaleToFitHeight) * INITIAL_ZOOM_MULTIPLIER
   
   // Center the canvas so photos fill the screen from the start
   const scaledWidth = canvasWidth * idealScale
