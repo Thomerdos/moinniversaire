@@ -140,7 +140,6 @@ const openLightbox = async (index) => {
     index: index,
     bgOpacity: 0.95,
     showHideAnimationType: 'zoom',
-    pswpModule: PhotoSwipe,
   })
 
   pswp.init()

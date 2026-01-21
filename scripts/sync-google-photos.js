@@ -18,8 +18,6 @@
 
 import { google } from 'googleapis';
 import fs from 'fs';
-import path from 'path';
-import https from 'https';
 
 const {
   GOOGLE_CLIENT_ID,
@@ -118,28 +116,6 @@ async function fetchAlbumPhotos(albumId, accessToken) {
   } while (pageToken);
 
   return photos;
-}
-
-async function downloadPhoto(url, filename) {
-  const photosDir = 'public/photos';
-  fs.mkdirSync(photosDir, { recursive: true });
-  
-  const filepath = path.join(photosDir, filename);
-  
-  return new Promise((resolve, reject) => {
-    https.get(url, (response) => {
-      if (response.statusCode === 200) {
-        const file = fs.createWriteStream(filepath);
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          resolve(filepath);
-        });
-      } else {
-        reject(new Error(`Failed to download: ${response.statusCode}`));
-      }
-    }).on('error', reject);
-  });
 }
 
 async function main() {
