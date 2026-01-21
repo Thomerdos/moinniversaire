@@ -98,7 +98,7 @@ const monthsTogether = computed(() => {
 
 const yearsTogether = computed(() => {
   if (!hasStarted.value) return 0
-  return now.value.getFullYear() - COUPLE_START_DATE.getFullYear()
+  return Math.floor(monthsTogether.value / 12)
 })
 
 const totalTime = computed(() => {
