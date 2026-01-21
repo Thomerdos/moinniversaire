@@ -23,6 +23,13 @@
         >
           🍝 Boulettes Jour
         </router-link>
+        <router-link 
+          to="/galerie" 
+          class="px-6 py-2 rounded-full transition-all duration-300 font-semibold"
+          :class="route.path === '/galerie' ? 'bg-gradient-to-r from-purple-gradient-start to-pink-gradient-end text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+        >
+          📷 Galerie
+        </router-link>
       </div>
     </div>
   </nav>

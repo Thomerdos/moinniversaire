@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^14.1.0",
+    "photoswipe": "^5.4.4",
     "pinia": "^3.0.4",
     "vue": "^3.4.0",
     "vue-router": "^4.6.4"
