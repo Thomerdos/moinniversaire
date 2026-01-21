@@ -1,0 +1,22 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.5s ease;
+}
+
+body.is-18 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.not-18 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
