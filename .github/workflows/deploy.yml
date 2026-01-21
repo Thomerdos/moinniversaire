@@ -39,9 +39,6 @@ jobs:
       - name: Build du projet
         run: npm run build
       
-      - name: Configuration des Pages
-        uses: actions/configure-pages@v4
-      
       - name: Upload de l'artifact
         uses: actions/upload-pages-artifact@v3
         with:
