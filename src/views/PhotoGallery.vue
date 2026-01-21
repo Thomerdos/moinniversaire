@@ -19,15 +19,6 @@
 
     <!-- Panzoom gallery -->
     <div v-else class="gallery-viewport" ref="viewportRef">
-      <!-- Instructions overlay - desktop only -->
-      <div v-if="!isMobile" class="instructions-overlay" :class="{ 'fade-out': instructionsHidden }">
-        <div class="instructions-content">
-          <p>🖱️ Glisser pour explorer</p>
-          <p>🔍 Molette pour zoomer</p>
-          <p>👆 Cliquer pour agrandir</p>
-        </div>
-      </div>
-
       <!-- Zoom controls -->
       <div class="zoom-controls">
         <button @click="zoomIn" class="zoom-btn" title="Zoom avant">+</button>
@@ -71,7 +62,6 @@ const photos = ref([])
 const containerRef = ref(null)
 const viewportRef = ref(null)
 const canvasRef = ref(null)
-const instructionsHidden = ref(false)
 const isMobile = ref(false)
 let panzoomInstance = null
 
@@ -90,13 +80,14 @@ const shuffleArray = (array) => {
   return shuffled
 }
 
-// Generate tight grid layout where photos touch
+// Generate tight grid layout where photos touch - BIG images for exploration
 const gridPhotos = computed(() => {
   if (photos.value.length === 0) return []
   
   const shuffled = shuffleArray(photos.value)
-  const photoSize = isMobile.value ? 150 : 220
-  const cols = isMobile.value ? 4 : 5
+  // Much bigger photos - only 2-3 visible at a time to encourage exploration
+  const photoSize = isMobile.value ? 280 : 450
+  const cols = isMobile.value ? 2 : 3
   
   return shuffled.map((photo, index) => {
     const col = index % cols
@@ -107,12 +98,12 @@ const gridPhotos = computed(() => {
     let width, height
     if (ratio > 1.2) {
       // Landscape - wider
-      width = photoSize * 1.4
+      width = photoSize * 1.3
       height = photoSize
     } else if (ratio < 0.85) {
       // Portrait - taller
       width = photoSize
-      height = photoSize * 1.4
+      height = photoSize * 1.3
     } else {
       // Square-ish
       width = photoSize
@@ -163,12 +154,12 @@ const initPanzoom = () => {
   if (!canvasRef.value || !viewportRef.value) return
   
   // Start centered on the grid
-  const startOffset = isMobile.value ? -200 : -300
+  const startOffset = isMobile.value ? -100 : -200
   
   panzoomInstance = Panzoom(canvasRef.value, {
     maxScale: 4,
     minScale: 0.3,
-    startScale: isMobile.value ? 1 : 0.8,
+    startScale: isMobile.value ? 0.9 : 0.7,
     startX: startOffset,
     startY: startOffset,
     cursor: 'grab',
@@ -181,15 +172,6 @@ const initPanzoom = () => {
     event.preventDefault()
     panzoomInstance.zoomWithWheel(event)
   }, { passive: false })
-  
-  // Hide instructions after first interaction
-  const hideInstructions = () => {
-    instructionsHidden.value = true
-  }
-  
-  viewportRef.value.addEventListener('mousedown', hideInstructions, { once: true })
-  viewportRef.value.addEventListener('touchstart', hideInstructions, { once: true })
-  viewportRef.value.addEventListener('wheel', hideInstructions, { once: true })
 }
 
 const zoomIn = () => {
@@ -273,42 +255,6 @@ onUnmounted(() => {
   cursor: grabbing;
 }
 
-/* Instructions overlay */
-.instructions-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  pointer-events: none;
-  transition: opacity 0.8s ease;
-}
-
-.instructions-overlay.fade-out {
-  opacity: 0;
-}
-
-.instructions-content {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(15px);
-  padding: 1.5rem 2rem;
-  border-radius: 1rem;
-  text-align: center;
-  color: white;
-  animation: pulse-glow 2s ease-in-out infinite;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.instructions-content p {
-  margin: 0.4rem 0;
-  font-size: 1rem;
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.5); }
-}
-
 /* Zoom controls */
 .zoom-controls {
   position: fixed;
@@ -347,11 +293,11 @@ onUnmounted(() => {
   font-size: 1.2rem;
 }
 
-/* Panzoom canvas */
+/* Panzoom canvas - sized for big images */
 .panzoom-canvas {
   position: relative;
-  width: 2000px;
-  height: 2000px;
+  width: 3000px;
+  height: 3000px;
   transform-origin: center center;
 }
 
@@ -417,8 +363,8 @@ onUnmounted(() => {
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .panzoom-canvas {
-    width: 1200px;
-    height: 1200px;
+    width: 1800px;
+    height: 1800px;
   }
   
   .zoom-controls {
