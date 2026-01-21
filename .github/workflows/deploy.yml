@@ -81,7 +81,12 @@ jobs:
           
           # Supprimer tous les fichiers sauf les dossiers pr-* et quelques fichiers spéciaux
           find . -maxdepth 1 -type f ! -name '.nojekyll' ! -name 'README.md' ! -name 'CNAME' -delete
-          find . -maxdepth 1 -type d ! -name '.' ! -name '..' ! -name '.git' ! -name 'pr-*' -exec rm -rf {} +
+          # Supprimer les dossiers sauf pr-* et .git
+          for dir in */; do
+            if [[ "$dir" != "pr-"* ]] && [[ "$dir" != ".git/" ]]; then
+              rm -rf "$dir"
+            fi
+          done
           
           # Copier le nouveau build à la racine
           cp -r ../dist/* .

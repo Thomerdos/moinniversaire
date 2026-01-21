@@ -9,6 +9,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# Permet de gérer les déploiements de preview par PR
+concurrency:
+  group: 'pages-preview-${{ github.event.pull_request.number }}'
+  cancel-in-progress: true
+
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest

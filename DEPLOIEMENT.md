@@ -136,11 +136,11 @@ Ouvrir http://localhost:4173/moinniversaire/pr-test/
 
 **Problème** : Les deux workflows tentent de déployer en même temps
 
-**Solution** : Les workflows utilisent un groupe de concurrence différent :
-- `deploy.yml` : `pages-deploy`
-- `preview.yml` : `pages-preview-pr-X`
+**Solution** : Les workflows utilisent des groupes de concurrence différents :
+- `deploy.yml` : `pages-deploy` (ne s'annule pas)
+- `preview.yml` : `pages-preview-{PR_NUMBER}` (s'annule si un nouveau push arrive)
 
-Cela permet aux deux de fonctionner en parallèle.
+Cela permet à la production et aux previews de fonctionner en parallèle, tout en évitant les conflits entre les mises à jour d'une même PR.
 
 ## 📝 Notes Importantes
 
