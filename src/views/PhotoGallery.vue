@@ -275,7 +275,8 @@ const loadPhotos = async () => {
     loading.value = true
     
     // Charger la liste des images depuis le JSON
-    const response = await fetch('/moinniversaire/photos/photos-data.json')
+    const baseUrl = import.meta.env.BASE_URL
+    const response = await fetch(`${baseUrl}photos/photos-data.json`)
     const photosData = await response.json()
     
     const allPhotos = []
@@ -285,11 +286,11 @@ const loadPhotos = async () => {
     
     for (const [album, filenames] of Object.entries(photosData)) {
       for (const filename of filenames) {
-        const promise = loadImageDimensions(`/moinniversaire/photos/${album}/${filename}`).then(dimensions => ({
+        const promise = loadImageDimensions(`${baseUrl}photos/${album}/${filename}`).then(dimensions => ({
           filename,
           album,
-          src: `/moinniversaire/photos/${album}/${filename}`,
-          thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
+          src: `${baseUrl}photos/${album}/${filename}`,
+          thumbnail: `${baseUrl}photos/thumbs/${album}/${filename}`,
           width: dimensions.width,
           height: dimensions.height
         }))
@@ -329,6 +330,7 @@ const loadImageDimensions = (src) => {
  * Fallback: charger les images manuellement si JSON indisponible
  */
 const loadPhotosManually = async () => {
+  const baseUrl = import.meta.env.BASE_URL
   const albumsData = {
     'chatons-en-montagne-partie-1': [
       '20250920_142201.webp',
@@ -349,8 +351,8 @@ const loadPhotosManually = async () => {
       allPhotos.push({
         filename,
         album,
-        src: `/moinniversaire/photos/${album}/${filename}`,
-        thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
+        src: `${baseUrl}photos/${album}/${filename}`,
+        thumbnail: `${baseUrl}photos/thumbs/${album}/${filename}`,
         width: 1920,
         height: 1440
       })
