@@ -12,16 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Temporary extraction directory (local only)
-temp-extract/
-
-# ZIP source files (local processing only, not published)
+# Photos and images
 zip/
 !zip/.gitkeep
-
-# Images are COMMITTED after local processing
-# img/ - DO NOT IGNORE, optimized images are committed
-# public/photos/thumbs/ - DO NOT IGNORE, thumbnails are committed
+# img/ est maintenant inclus dans Git pour le déploiement (images optimisées WebP)
+temp-extract/
 
 # Editor directories and files
 .vscode/*
