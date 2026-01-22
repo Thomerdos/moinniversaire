@@ -96,9 +96,11 @@
         ref="mosaicContainer"
         class="w-full h-full"
         :style="{
-          transform: `translate(${panX}px, ${panY}px) scale(${zoomLevel})`,
+          transform: `translate3d(${panX}px, ${panY}px, 0) scale(${zoomLevel})`,
           transformOrigin: '0 0',
-          willChange: 'transform'
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
+          perspective: '1000px'
         }"
       >
         <!-- Mosaic columns -->
@@ -185,6 +187,8 @@ const isPanning = ref(false)
 let panStartX = 0
 let panStartY = 0
 let hasMoved = false
+let animationFrameId = null
+const panStarted = ref(false)
 
 // Calculer le zoom minimum pour toujours couvrir l'écran
 const minZoom = computed(() => {
@@ -489,11 +493,12 @@ const getPhotoIndex = (photo) => {
 }
 
 /**
- * Pan handling avec distinction clic/drag
+ * Pan handling avec distinction clic/drag et requestAnimationFrame pour fluidité
  */
 const startPan = (e) => {
   if (e.button !== 0) return // Only left mouse button
   isPanning.value = true
+  panStarted.value = true
   hasMoved = false
   panStartX = e.clientX - panX.value
   panStartY = e.clientY - panY.value
@@ -503,17 +508,26 @@ const startPan = (e) => {
 const pan = (e) => {
   if (!isPanning.value) return
   
+  // Annuler toute animation en cours
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+  }
+  
   const deltaX = e.clientX - panStartX
   const deltaY = e.clientY - panStartY
   
-  // Détecter si l'utilisateur a vraiment bougé (plus de 5px)
-  if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
-    hasMoved = true
-  }
-  
-  // Appliquer les limites de pan
-  panX.value = constrainPan(deltaX, deltaY).x
-  panY.value = constrainPan(deltaX, deltaY).y
+  // Utiliser requestAnimationFrame pour des animations fluides
+  animationFrameId = requestAnimationFrame(() => {
+    // Détecter si l'utilisateur a vraiment bougé (plus de 5px)
+    if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
+      hasMoved = true
+    }
+    
+    // Appliquer les limites de pan
+    const constrained = constrainPan(deltaX, deltaY)
+    panX.value = constrained.x
+    panY.value = constrained.y
+  })
 }
 
 /**
@@ -544,15 +558,21 @@ const constrainPan = (x, y) => {
 
 const endPan = () => {
   isPanning.value = false
+  // Annuler toute animation en cours
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
 }
 
 /**
- * Touch support pour mobile avec pinch-to-zoom
+ * Touch support pour mobile avec pinch-to-zoom et requestAnimationFrame
  */
 const handleTouchStart = (e) => {
   if (e.touches.length === 1) {
     // Un doigt: pan
     isPanning.value = true
+    panStarted.value = true
     hasMoved = false
     touchStartX = e.touches[0].clientX - panX.value
     touchStartY = e.touches[0].clientY - panY.value
@@ -567,57 +587,72 @@ const handleTouchStart = (e) => {
 }
 
 const handleTouchMove = (e) => {
+  // Annuler toute animation en cours
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+  }
+  
   if (e.touches.length === 1 && isPanning.value) {
-    // Pan avec un doigt
+    // Pan avec un doigt - utiliser requestAnimationFrame
     const deltaX = e.touches[0].clientX - touchStartX
     const deltaY = e.touches[0].clientY - touchStartY
     
-    if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
-      hasMoved = true
-    }
-    
-    // Appliquer les limites de pan
-    const constrained = constrainPan(deltaX, deltaY)
-    panX.value = constrained.x
-    panY.value = constrained.y
+    animationFrameId = requestAnimationFrame(() => {
+      if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
+        hasMoved = true
+      }
+      
+      // Appliquer les limites de pan
+      const constrained = constrainPan(deltaX, deltaY)
+      panX.value = constrained.x
+      panY.value = constrained.y
+    })
     e.preventDefault()
   } else if (e.touches.length === 2) {
-    // Pinch-to-zoom avec deux doigts
+    // Pinch-to-zoom avec deux doigts - utiliser requestAnimationFrame
     const dx = e.touches[0].clientX - e.touches[1].clientX
     const dy = e.touches[0].clientY - e.touches[1].clientY
     const distance = Math.sqrt(dx * dx + dy * dy)
     
-    if (touchStartDistance > 0) {
-      const scale = distance / touchStartDistance
-      const oldZoom = zoomLevel.value
-      zoomLevel.value = Math.max(minZoom.value, Math.min(4, oldZoom * scale))
+    animationFrameId = requestAnimationFrame(() => {
+      if (touchStartDistance > 0) {
+        const scale = distance / touchStartDistance
+        const oldZoom = zoomLevel.value
+        zoomLevel.value = Math.max(minZoom.value, Math.min(4, oldZoom * scale))
+        
+        // Centrer le zoom entre les deux doigts
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+        
+        const rect = e.target.getBoundingClientRect()
+        const mouseX = centerX - rect.left - panX.value
+        const mouseY = centerY - rect.top - panY.value
+        
+        const zoomDiff = zoomLevel.value / oldZoom
+        let newPanX = centerX - rect.left - mouseX * zoomDiff
+        let newPanY = centerY - rect.top - mouseY * zoomDiff
+        
+        // Contraindre aux limites
+        const constrained = constrainPan(newPanX, newPanY)
+        panX.value = constrained.x
+        panY.value = constrained.y
+        
+        touchStartDistance = distance
+      }
       
-      // Centrer le zoom entre les deux doigts
-      const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2
-      const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2
-      
-      const rect = e.target.getBoundingClientRect()
-      const mouseX = centerX - rect.left - panX.value
-      const mouseY = centerY - rect.top - panY.value
-      
-      const zoomDiff = zoomLevel.value / oldZoom
-      let newPanX = centerX - rect.left - mouseX * zoomDiff
-      let newPanY = centerY - rect.top - mouseY * zoomDiff
-      
-      // Contraindre aux limites
-      const constrained = constrainPan(newPanX, newPanY)
-      panX.value = constrained.x
-      panY.value = constrained.y
-      
-      touchStartDistance = distance
-    }
-    
-    hasMoved = true
+      hasMoved = true
+    })
     e.preventDefault()
   }
 }
 
 const handleTouchEnd = (e) => {
+  // Annuler toute animation en cours
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  
   // Détecter double-tap pour zoom
   const now = Date.now()
   if (now - lastTouchEnd < 300 && !hasMoved) {
@@ -785,5 +820,16 @@ onMounted(() => {
 
 .fade-loader-leave-to {
   opacity: 0;
+}
+
+/* Hardware acceleration for image containers */
+img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth scrolling hints */
+* {
+  -webkit-overflow-scrolling: touch;
 }
 </style>
