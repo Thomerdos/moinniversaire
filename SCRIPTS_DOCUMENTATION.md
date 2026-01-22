@@ -4,9 +4,22 @@
 
 Ce projet utilise des scripts Node.js pour automatiser l'extraction, l'optimisation et l'organisation des images de voyage en albums.
 
+## 🚀 Workflow Complet (Recommandé)
+
+Pour traiter de nouveaux ZIPs en une seule commande :
+
+```bash
+npm run process-photos
+```
+
+Cette commande exécute séquentiellement :
+1. **Extraction et optimisation** des ZIPs → images WebP organisées par album
+2. **Génération des miniatures** 400px pour la galerie
+3. **Création du JSON** metadata pour l'application
+
 ## Scripts disponibles
 
-### 1. `extract-and-optimize.js`
+### 1. `extract-and-optimize.js` ⭐ Principal
 
 **Objectif**: Extraire tous les fichiers ZIP du dossier `zip/`, optimiser les images en WebP et les organiser par album.
 
@@ -16,23 +29,23 @@ npm run extract-and-optimize
 ```
 
 **Fonctionnalités**:
-- Extrait automatiquement tous les ZIPs du dossier `zip/`
-- Convertit les images en format WebP optimisé (max 1920px, qualité 85%)
-- Organise les images dans des sous-dossiers nommés d'après les ZIPs (format slug: minuscules, tirets)
+- Extrait automatiquement tous les ZIPs du dossier `zip/` en parallèle
+- Convertit les images en format WebP optimisé (max 1400px, qualité 75%)
+- Organise les images dans `public/photos/[album-slug]/`
 - Nettoie automatiquement les fichiers temporaires
 - Gère les doublons en ajoutant des suffixes numériques
 
 **Processus**:
 1. Lecture des fichiers ZIP dans le dossier `zip/`
-2. Extraction temporaire dans `temp-extract/`
+2. Extraction parallèle temporaire dans `temp-extract/`
 3. Recherche récursive des images (.jpg, .jpeg, .png, .webp)
-4. Optimisation en WebP via Sharp
-5. Placement dans `img/[album-slug]/`
-6. Suppression des fichiers temporaires
+4. Optimisation parallèle (5 images à la fois) en WebP via Sharp
+5. Placement dans `public/photos/[album-slug]/`
+6. Suppression automatique des fichiers temporaires
 
 **Exemple de structure créée**:
 ```
-img/
+public/photos/
 ├── chatons-en-montagne-partie-1/
 │   ├── PXL_20250920_090238049_MP.webp
 │   ├── PXL_20250920_090255053_MP.webp
@@ -42,41 +55,117 @@ img/
 └── ...
 ```
 
-### 2. `organize-existing-images.js`
+### 2. `generate-thumbnails.js`
 
-**Objectif**: Organiser les images existantes dans le dossier `img/` en sous-dossiers par album, basé sur les dates des images.
-
-**Utilisation**:
-```bash
-npm run organize-images
-```
-
-**Fonctionnalités**:
-- Crée les dossiers albums s'ils n'existent pas
-- Classe les images par plage de dates correspondant aux albums
-- Utilise le format slug pour les noms de dossiers
-- Affiche le statut de chaque image (organisée ou non)
-
-**Mapping des albums par date**:
-- `vacances-et-bretonnie-chapter-1`: 13 août - 23 août 2025
-- `chatons-en-montagne-partie-1`: 18 septembre - 22 septembre 2025
-- `chatons-en-montagne-partie-2`: 11 octobre - 12 octobre 2025
-- `chatons-en-montagne-partie-3`: 24 octobre - 26 octobre 2025
-- `chatons-en-montagne-partie-4`: 8 novembre - 11 novembre 2025
-
-### 3. `optimize-images.js`
-
-**Objectif**: Optimiser les images et créer des miniatures pour la galerie web.
+**Objectif**: Générer les miniatures (400px) pour toutes les images optimisées.
 
 **Utilisation**:
 ```bash
-npm run optimize-images
+npm run generate-thumbs
 ```
 
 **Fonctionnalités**:
-- Crée des versions optimisées en WebP (max 1920px)
-- Crée des miniatures (max 600px) dans `public/photos/thumbs/`
-- Génère un fichier JSON avec les métadonnées
+- Parcourt tous les albums dans `public/photos/`
+- Crée des miniatures 400px (qualité 80%) dans `public/photos/thumbs/[album]/`
+- Traitement parallèle (5 images à la fois) pour plus de rapidité
+- Saute les miniatures déjà existantes
+- Affiche la progression par batch
+
+**Structure créée**:
+```
+public/photos/thumbs/
+├── chatons-en-montagne-partie-1/
+│   ├── image001.webp (400px max)
+│   └── ...
+└── ...
+```
+
+### 3. `generate-photos-json.js`
+
+**Objectif**: Créer le fichier `photos-data.json` avec la liste de toutes les images organisées par album.
+
+**Utilisation**:
+```bash
+npm run generate-photos-json
+```
+
+**Fonctionnalités**:
+- Lit récursivement tous les albums dans `public/photos/`
+- Liste tous les fichiers `.webp` par album
+- Génère `public/photos/photos-data.json`
+- **Exécuté automatiquement** lors du `npm run build`
+
+**Format JSON généré**:
+```json
+{
+  "chatons-en-montagne-partie-1": [
+    "image001.webp",
+    "image002.webp",
+    ...
+  ],
+  "chatons-en-montagne-partie-2": [...],
+  ...
+}
+```
+
+### 4. `reoptimize-images.js` 🔧 Utilitaire
+
+**Objectif**: Ré-optimiser les images existantes avec de meilleurs paramètres de compression (one-time utility).
+
+**Utilisation**:
+```bash
+npm run reoptimize
+```
+
+**Fonctionnalités**:
+- Ré-optimise toutes les images WebP existantes
+- Réduit la taille max à 1400px (au lieu de 1920px)
+- Baisse la qualité à 75% (au lieu de 85%)
+- Traitement par batches de 5 images en parallèle
+- Affiche les économies d'espace réalisées
+- **Utilisation ponctuelle** : après changement des paramètres d'optimisation
+
+**Résultat typique**:
+```
+Total images traitées: 515
+Taille originale: 312.24 MB
+Nouvelle taille: 105.51 MB
+Économie totale: 206.73 MB (66.3% en moyenne)
+```
+
+## 📋 Workflow Recommandé
+
+### Ajouter de nouveaux albums (nouveaux ZIPs)
+
+1. **Placer les ZIPs** dans le dossier `zip/`
+2. **Exécuter le workflow complet**:
+   ```bash
+   npm run process-photos
+   ```
+   Cela va :
+   - Extraire et optimiser les images (1400px, qualité 75%)
+   - Générer les miniatures 400px
+   - Mettre à jour le JSON metadata
+
+3. **Tester localement**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Builder pour production**:
+   ```bash
+   npm run build
+   ```
+   (Le JSON sera automatiquement régénéré)
+
+### Modifier les paramètres d'optimisation
+
+Si vous modifiez les paramètres dans `extract-and-optimize.js` et voulez ré-optimiser les images existantes :
+
+```bash
+npm run reoptimize
+npm run generate-thumbs  # Régénérer aussi les miniatures si nécessaire
+```
 
 ## Configuration et Dépendances
 
@@ -91,65 +180,106 @@ npm run optimize-images
 }
 ```
 
-**Sharp**: Bibliothèque de traitement d'images haute performance
+**Sharp**: Bibliothèque de traitement d'images haute performance  
 **extract-zip**: Extraction native de fichiers ZIP
 
 ### Configuration Node.js:
 
-- **Version recommandée**: Node.js 20.11.1 ou supérieure
-- **Type de module**: ES Modules (type: "module" dans package.json)
+- **Version recommandée**: Node.js 16+ ou supérieure
+- **Type de module**: ES Modules (`"type": "module"` dans package.json)
 
-## Workflow recommandé
+### Paramètres d'optimisation actuels:
 
-1. **Première utilisation**: Placer les ZIPs dans le dossier `zip/`
-   ```bash
-   npm run extract-and-optimize
-   ```
+- **Images optimisées**: Max 1400px, qualité WebP 75%
+- **Miniatures**: Max 400px, qualité WebP 80%
+- **Parallélisme**: 5 images traitées simultanément
 
-2. **Mises à jour**: Si vous ajoutez de nouveaux ZIPs
-   ```bash
-   npm run extract-and-optimize
-   ```
+## Structure des Dossiers
 
-3. **Images existantes**: Si les images sont déjà extraites mais désorganisées
-   ```bash
-   npm run organize-images
-   ```
-
-4. **Pour la galerie web**: Créer les miniatures optimisées
-   ```bash
-   npm run optimize-images
-   ```
+```
+moinniversaire/
+├── zip/                          # 📦 Fichiers ZIP sources (gitignored)
+│   ├── Album 1.zip
+│   ├── Album 2.zip
+│   └── .gitkeep
+├── public/
+│   └── photos/                   # ✅ Images optimisées (committed in git)
+│       ├── album-1/              # Albums organisés
+│       │   ├── image001.webp
+│       │   └── image002.webp
+│       ├── thumbs/               # Miniatures 400px
+│       │   └── album-1/
+│       │       ├── image001.webp
+│       │       └── image002.webp
+│       └── photos-data.json      # Metadata JSON
+├── temp-extract/                 # 🗑️ Extraction temporaire (gitignored, auto-cleaned)
+└── scripts/
+    ├── extract-and-optimize.js   # ⭐ Script principal
+    ├── generate-thumbnails.js    # Génération miniatures
+    ├── generate-photos-json.js   # Génération JSON
+    └── reoptimize-images.js      # Utilitaire ré-optimisation
+```
 
 ## .gitignore
 
 Le projet est configuré pour ignorer:
-- `zip/` - Fichiers ZIP sources (volumineux)
-- `img/` - Images non optimisées (volumineux)
-- `temp-extract/` - Fichiers temporaires
+- `zip/` - Fichiers ZIP sources (très volumineux, non nécessaires en production)
+- `temp-extract/` - Fichiers temporaires d'extraction (auto-nettoyés)
 
-Seuls les `.gitkeep` sont versionnés pour maintenir la structure des dossiers.
+Les images optimisées dans `public/photos/` sont **incluses dans Git** (~ 110 MB après optimisation).
 
-## Détails techniques
+## 🎯 Scripts NPM Disponibles
 
-### Optimisation des images
+```bash
+# Workflow complet (recommandé pour nouveaux ZIPs)
+npm run process-photos
 
-**Sharp - Paramètres d'optimisation**:
-- **Format**: WebP (meilleure compression)
-- **Taille max**: 1920px (haute qualité pour affichage)
-- **Qualité**: 85% (bon équilibre qualité/taille)
-- **Mode resize**: `inside` (respecte les proportions, sans agrandissement)
+# Scripts individuels
+npm run extract-and-optimize   # Extraire ZIPs → optimiser → organiser
+npm run generate-thumbs         # Générer miniatures 400px
+npm run generate-photos-json    # Créer le JSON metadata
+npm run reoptimize              # Ré-optimiser images existantes (utility)
 
-**Exemple de réduction de taille**:
-- Image originale JPEG: ~2MB
-- Image optimisée WebP: ~200-400KB
-- Miniature: ~30-50KB
-
-### Gestion des doublons
-
-Si plusieurs images ont le même nom:
+# Développement
+npm run dev                     # Serveur de développement
+npm run build                   # Build production (inclut generate-photos-json)
+npm run preview                 # Preview du build
 ```
-image.webp       → image.webp
+
+## 📝 Notes Importantes
+
+1. **Les images sont dans Git** : Les images optimisées (~ 110 MB) sont commitées pour simplifier le déploiement
+2. **Build automatique** : Le JSON est régénéré automatiquement lors du `npm run build`
+3. **Workflow simplifié** : Un seul script `process-photos` pour tout traiter
+4. **Pas de redondance** : Scripts obsolètes supprimés (`optimize-images.js`, `organize-existing-images.js`)
+
+## 🐛 Troubleshooting
+
+**Problème**: `Error: Cannot find module 'sharp'`
+```bash
+npm install
+```
+
+**Problème**: Images trop volumineuses dans Git
+```bash
+npm run reoptimize  # Ré-optimise avec compression accrue
+```
+
+**Problème**: Miniatures manquantes
+```bash
+npm run generate-thumbs
+```
+
+**Problème**: JSON metadata obsolète
+```bash
+npm run generate-photos-json
+```
+
+## 📚 Références
+
+- [Sharp Documentation](https://sharp.pixelplumbing.com/)
+- [WebP Format](https://developers.google.com/speed/webp)
+- [Extract-Zip GitHub](https://github.com/max-mapper/extract-zip)
 image.webp       → image_1.webp
 image.webp       → image_2.webp
 ```

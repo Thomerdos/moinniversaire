@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const imgDir = path.join(__dirname, '..', 'img');
+const imgDir = path.join(__dirname, '..', 'public', 'photos');
 const albums = {};
 
 // Lire tous les dossiers d'albums

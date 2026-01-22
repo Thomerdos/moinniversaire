@@ -2,7 +2,7 @@
 
 /**
  * Script to extract ZIP files from zip/ folder, optimize images to WebP,
- * and organize them in the img/ folder by album (ZIP name)
+ * and organize them in the public/photos/ folder by album (ZIP name)
  * 
  * Usage: node scripts/extract-and-optimize.js
  */
@@ -19,7 +19,7 @@ const __dirname = dirname(__filename);
 
 const ZIP_DIR = path.join(__dirname, '../zip');
 const TEMP_EXTRACT_DIR = path.join(__dirname, '../temp-extract');
-const IMG_DIR = path.join(__dirname, '../img');
+const IMG_DIR = path.join(__dirname, '../public/photos');
 
 // Create directories if they don't exist
 fs.mkdirSync(IMG_DIR, { recursive: true });
@@ -66,10 +66,10 @@ async function optimizeImage(inputPath, outputPath, baseName) {
   try {
     const metadata = await sharp(inputPath).metadata();
 
-    // Create optimized WebP (max 1920px)
+    // Create optimized WebP (max 1400px, quality 75 pour réduire la taille)
     await sharp(inputPath)
-      .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 85 })
+      .resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 75 })
       .toFile(outputPath);
 
     console.log(`  ✓ ${baseName}`);

@@ -15,7 +15,7 @@ dist-ssr
 # Photos and images
 zip/
 !zip/.gitkeep
-# img/ est maintenant inclus dans Git pour le déploiement (images optimisées WebP)
+# public/img/ est maintenant inclus dans Git pour le déploiement (images optimisées WebP)
 temp-extract/
 
 # Editor directories and files

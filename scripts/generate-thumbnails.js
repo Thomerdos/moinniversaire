@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const imgDir = path.join(__dirname, '..', 'img');
+const imgDir = path.join(__dirname, '..', 'public', 'photos');
 const thumbsDir = path.join(__dirname, '..', 'public', 'photos', 'thumbs');
 
 // Configuration des thumbnails

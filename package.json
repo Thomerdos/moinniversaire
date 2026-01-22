@@ -8,10 +8,10 @@
     "build": "npm run generate-photos-json && vite build",
     "preview": "vite preview",
     "extract-and-optimize": "node scripts/extract-and-optimize.js",
-    "organize-images": "node scripts/organize-existing-images.js",
-    "optimize-images": "node scripts/optimize-images.js",
+    "reoptimize": "node scripts/reoptimize-images.js",
     "generate-thumbs": "node scripts/generate-thumbnails.js",
-    "generate-photos-json": "node scripts/generate-photos-json.js"
+    "generate-photos-json": "node scripts/generate-photos-json.js",
+    "process-photos": "npm run extract-and-optimize && npm run generate-thumbs && npm run generate-photos-json"
   },
   "dependencies": {
     "@panzoom/panzoom": "^4.6.1",

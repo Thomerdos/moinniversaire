@@ -349,8 +349,8 @@ const loadPhotosManually = async () => {
       allPhotos.push({
         filename,
         album,
-        src: `/moinniversaire/img/${album}/${filename}`,
-        thumbnail: `/moinniversaire/img/${album}/${filename}`,
+        src: `/moinniversaire/photos/${album}/${filename}`,
+        thumbnail: `/moinniversaire/photos/${album}/${filename}`,
         width: 1920,
         height: 1440
       })
