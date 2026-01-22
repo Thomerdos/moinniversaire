@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRafFn } from '@vueuse/core'
 import PhotoSwipe from 'photoswipe'
 import 'photoswipe/style.css'
@@ -244,6 +244,7 @@ let touchStartDistance = 0
 let lastTouchEnd = 0
 let currentTouchX = 0
 let currentTouchY = 0
+let cachedTouchRect = null // Cache the bounding rect during touch gestures
 
 // Mosaic configuration - grille dense et compacte
 const columnWidth = 250 // Réduit pour plus de densité
@@ -372,6 +373,10 @@ const loadPhotos = async () => {
     await validateThumbnails(allPhotos)
     
     photos.value = allPhotos
+    
+    // Center the mosaic after photos are loaded and DOM is updated
+    await nextTick()
+    centerMosaic()
   } catch (error) {
     console.error('Erreur lors du chargement des photos:', error)
     // Afficher l'erreur à l'utilisateur
@@ -472,6 +477,10 @@ const loadPhotosManually = async () => {
     
     photos.value = allPhotos
     console.log('✅ Fallback réussi: photos chargées')
+    
+    // Center the mosaic after fallback load
+    await nextTick()
+    centerMosaic()
   } catch (error) {
     console.error('❌ Fallback échoué:', error)
     photos.value = [] // Afficher l'état vide
@@ -594,6 +603,9 @@ const endPan = () => {
  * Touch support for mobile with pinch-to-zoom and smooth animation
  */
 const handleTouchStart = (e) => {
+  // Cache the bounding rect once at the start
+  cachedTouchRect = e.currentTarget.getBoundingClientRect()
+  
   if (e.touches.length === 1) {
     // Single finger: pan
     isPanning.value = true
@@ -645,7 +657,8 @@ const handleTouchMove = (e) => {
       // Update cache for new calculations
       updateDimensionsCache()
       
-      const rect = e.target.getBoundingClientRect()
+      // Use cached rect for better performance
+      const rect = cachedTouchRect || e.currentTarget.getBoundingClientRect()
       const mouseX = centerX - rect.left - panX.value
       const mouseY = centerY - rect.top - panY.value
       
@@ -671,6 +684,9 @@ const handleTouchEnd = (e) => {
   isPanning.value = false
   pauseAnimation()
   
+  // Clear cached rect
+  cachedTouchRect = null
+  
   // Detect double-tap for zoom
   const now = Date.now()
   if (now - lastTouchEnd < 300 && !hasMoved) {
@@ -683,7 +699,7 @@ const handleTouchEnd = (e) => {
     } else {
       // Zoom in to tapped point
       const touch = e.changedTouches[0]
-      const rect = e.target.getBoundingClientRect()
+      const rect = e.currentTarget.getBoundingClientRect()
       const centerX = touch.clientX - rect.left
       const centerY = touch.clientY - rect.top
       
@@ -783,6 +799,24 @@ const zoomOut = () => {
 const resetZoom = () => {
   zoomLevel.value = Math.max(1, minZoom.value)
   panX.value = 0
+  panY.value = 0
+}
+
+/**
+ * Center the mosaic on initial load
+ */
+const centerMosaic = () => {
+  const screenWidth = window.innerWidth
+  const mosaicWidth = totalMosaicWidth.value * zoomLevel.value
+  
+  // Center horizontally
+  if (mosaicWidth > screenWidth) {
+    panX.value = (screenWidth - mosaicWidth) / 2
+  } else {
+    panX.value = 0
+  }
+  
+  // Keep Y at top (below header)
   panY.value = 0
 }
 
