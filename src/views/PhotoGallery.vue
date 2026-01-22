@@ -96,9 +96,11 @@
         ref="mosaicContainer"
         class="w-full h-full"
         :style="{
-          transform: `translate(${panX}px, ${panY}px) scale(${zoomLevel})`,
+          transform: `translate3d(${panX}px, ${panY}px, 0) scale(${zoomLevel})`,
           transformOrigin: '0 0',
-          willChange: 'transform'
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
+          perspective: '1000px'
         }"
       >
         <!-- Mosaic columns -->
@@ -185,6 +187,16 @@ const isPanning = ref(false)
 let panStartX = 0
 let panStartY = 0
 let hasMoved = false
+let animationFrameId = null
+const panStarted = ref(false)
+let currentMouseX = 0
+let currentMouseY = 0
+let isAnimating = false
+
+// Cache pour les calculs coûteux
+let cachedAvgColumnHeight = 0
+let cachedScreenWidth = 0
+let cachedScreenHeight = 0
 
 // Calculer le zoom minimum pour toujours couvrir l'écran
 const minZoom = computed(() => {
@@ -209,6 +221,8 @@ let touchStartX = 0
 let touchStartY = 0
 let touchStartDistance = 0
 let lastTouchEnd = 0
+let currentTouchX = 0
+let currentTouchY = 0
 
 // Mosaic configuration - grille dense et compacte
 const columnWidth = 250 // Réduit pour plus de densité
@@ -489,22 +503,22 @@ const getPhotoIndex = (photo) => {
 }
 
 /**
- * Pan handling avec distinction clic/drag
+ * Fonction d'animation continue pour un pan ultra-fluide (aussi pour touch)
  */
-const startPan = (e) => {
-  if (e.button !== 0) return // Only left mouse button
-  isPanning.value = true
-  hasMoved = false
-  panStartX = e.clientX - panX.value
-  panStartY = e.clientY - panY.value
-  e.preventDefault()
-}
-
-const pan = (e) => {
-  if (!isPanning.value) return
+const smoothPan = () => {
+  if (!isPanning.value) {
+    isAnimating = false
+    return
+  }
   
-  const deltaX = e.clientX - panStartX
-  const deltaY = e.clientY - panStartY
+  // Pour la souris: currentMouseX contient la position brute
+  // Pour le tactile: currentTouchX contient aussi la position brute
+  // Dans les deux cas, on calcule delta de la même manière
+  const currentX = currentMouseX || currentTouchX
+  const currentY = currentMouseY || currentTouchY
+  
+  const deltaX = currentX - panStartX
+  const deltaY = currentY - panStartY
   
   // Détecter si l'utilisateur a vraiment bougé (plus de 5px)
   if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
@@ -512,29 +526,73 @@ const pan = (e) => {
   }
   
   // Appliquer les limites de pan
-  panX.value = constrainPan(deltaX, deltaY).x
-  panY.value = constrainPan(deltaX, deltaY).y
+  const constrained = constrainPan(deltaX, deltaY)
+  panX.value = constrained.x
+  panY.value = constrained.y
+  
+  // Continuer l'animation
+  animationFrameId = requestAnimationFrame(smoothPan)
 }
 
 /**
- * Contraindre le pan aux limites de la mosaïque
+ * Pan handling avec distinction clic/drag et requestAnimationFrame pour fluidité maximale
+ */
+const startPan = (e) => {
+  if (e.button !== 0) return // Only left mouse button
+  isPanning.value = true
+  panStarted.value = true
+  hasMoved = false
+  panStartX = e.clientX - panX.value
+  panStartY = e.clientY - panY.value
+  currentMouseX = e.clientX
+  currentMouseY = e.clientY
+  
+  // Mettre à jour le cache des dimensions une seule fois au début
+  updateDimensionsCache()
+  
+  // Démarrer la boucle d'animation si elle n'est pas déjà active
+  if (!isAnimating) {
+    isAnimating = true
+    animationFrameId = requestAnimationFrame(smoothPan)
+  }
+  
+  e.preventDefault()
+}
+
+const pan = (e) => {
+  if (!isPanning.value) return
+  
+  // Mettre à jour seulement les coordonnées de la souris
+  // L'animation frame se chargera de l'application fluide
+  currentMouseX = e.clientX
+  currentMouseY = e.clientY
+}
+
+/**
+ * Mettre à jour le cache des dimensions (appelé une fois au début du pan)
+ */
+const updateDimensionsCache = () => {
+  cachedScreenWidth = window.innerWidth
+  cachedScreenHeight = window.innerHeight - 100
+  
+  // Calculer hauteur moyenne des colonnes (opération coûteuse)
+  cachedAvgColumnHeight = columns.value.length > 0 
+    ? columns.value.reduce((sum, col) => sum + col.reduce((s, p) => s + p.displayHeight + 4, 0), 0) / columns.value.length
+    : cachedScreenHeight
+}
+
+/**
+ * Contraindre le pan aux limites de la mosaïque (version optimisée)
  */
 const constrainPan = (x, y) => {
-  const screenWidth = window.innerWidth
-  const screenHeight = window.innerHeight - 100
   const mosaicWidth = totalMosaicWidth.value * zoomLevel.value
-  
-  // Calculer hauteur moyenne des colonnes
-  const avgColumnHeight = columns.value.length > 0 
-    ? columns.value.reduce((sum, col) => sum + col.reduce((s, p) => s + p.displayHeight + 4, 0), 0) / columns.value.length
-    : screenHeight
-  const mosaicHeight = avgColumnHeight * zoomLevel.value
+  const mosaicHeight = cachedAvgColumnHeight * zoomLevel.value
   
   // Limites: on ne peut pas voir de bord
   const maxX = 0
-  const minX = screenWidth - mosaicWidth
+  const minX = cachedScreenWidth - mosaicWidth
   const maxY = 100 // Hauteur de l'header
-  const minY = screenHeight - mosaicHeight + 100
+  const minY = cachedScreenHeight - mosaicHeight + 100
   
   return {
     x: Math.min(maxX, Math.max(minX, x)),
@@ -544,21 +602,44 @@ const constrainPan = (x, y) => {
 
 const endPan = () => {
   isPanning.value = false
+  isAnimating = false
+  // Annuler l'animation frame
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
 }
 
 /**
- * Touch support pour mobile avec pinch-to-zoom
+ * Touch support pour mobile avec pinch-to-zoom et animation fluide
  */
 const handleTouchStart = (e) => {
   if (e.touches.length === 1) {
     // Un doigt: pan
     isPanning.value = true
+    panStarted.value = true
     hasMoved = false
     touchStartX = e.touches[0].clientX - panX.value
     touchStartY = e.touches[0].clientY - panY.value
+    currentTouchX = e.touches[0].clientX
+    currentTouchY = e.touches[0].clientY
+    
+    // Mettre à jour le cache des dimensions
+    updateDimensionsCache()
+    
+    // Démarrer la boucle d'animation
+    if (!isAnimating) {
+      isAnimating = true
+      animationFrameId = requestAnimationFrame(smoothPan)
+    }
   } else if (e.touches.length === 2) {
     // Deux doigts: pinch-to-zoom
     isPanning.value = false
+    isAnimating = false
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
+    }
     const dx = e.touches[0].clientX - e.touches[1].clientX
     const dy = e.touches[0].clientY - e.touches[1].clientY
     touchStartDistance = Math.sqrt(dx * dx + dy * dy)
@@ -568,18 +649,9 @@ const handleTouchStart = (e) => {
 
 const handleTouchMove = (e) => {
   if (e.touches.length === 1 && isPanning.value) {
-    // Pan avec un doigt
-    const deltaX = e.touches[0].clientX - touchStartX
-    const deltaY = e.touches[0].clientY - touchStartY
-    
-    if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
-      hasMoved = true
-    }
-    
-    // Appliquer les limites de pan
-    const constrained = constrainPan(deltaX, deltaY)
-    panX.value = constrained.x
-    panY.value = constrained.y
+    // Pan avec un doigt - mettre à jour les coordonnées
+    currentTouchX = e.touches[0].clientX
+    currentTouchY = e.touches[0].clientY
     e.preventDefault()
   } else if (e.touches.length === 2) {
     // Pinch-to-zoom avec deux doigts
@@ -595,6 +667,9 @@ const handleTouchMove = (e) => {
       // Centrer le zoom entre les deux doigts
       const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      
+      // Mettre à jour le cache pour les nouveaux calculs
+      updateDimensionsCache()
       
       const rect = e.target.getBoundingClientRect()
       const mouseX = centerX - rect.left - panX.value
@@ -618,6 +693,14 @@ const handleTouchMove = (e) => {
 }
 
 const handleTouchEnd = (e) => {
+  // Arrêter l'animation
+  isPanning.value = false
+  isAnimating = false
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  
   // Détecter double-tap pour zoom
   const now = Date.now()
   if (now - lastTouchEnd < 300 && !hasMoved) {
@@ -637,6 +720,9 @@ const handleTouchEnd = (e) => {
       const oldZoom = zoomLevel.value
       zoomLevel.value = 2.5
       
+      // Mettre à jour le cache pour les nouveaux calculs
+      updateDimensionsCache()
+      
       const mouseX = centerX - panX.value
       const mouseY = centerY - panY.value
       
@@ -652,7 +738,6 @@ const handleTouchEnd = (e) => {
   }
   
   lastTouchEnd = now
-  isPanning.value = false
   touchStartDistance = 0
 }
 
@@ -670,7 +755,7 @@ const handlePhotoClick = (index, event) => {
 }
 
 /**
- * Zoom handling with mouse wheel
+ * Zoom handling with mouse wheel (optimisé)
  */
 const handleWheel = (e) => {
   e.preventDefault()
@@ -683,6 +768,9 @@ const handleWheel = (e) => {
   } else {
     zoomLevel.value = Math.max(zoomLevel.value - zoomSpeed, minZoom.value)
   }
+  
+  // Mettre à jour le cache pour les nouveaux calculs
+  updateDimensionsCache()
   
   // Ajuster la position pour zoomer vers le curseur
   const rect = e.currentTarget.getBoundingClientRect()
@@ -704,6 +792,7 @@ const handleWheel = (e) => {
  */
 const zoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value + 0.3, 4)
+  updateDimensionsCache()
 }
 
 /**
@@ -711,6 +800,7 @@ const zoomIn = () => {
  */
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value - 0.3, minZoom.value)
+  updateDimensionsCache()
   // Contraindre le pan après le zoom
   const constrained = constrainPan(panX.value, panY.value)
   panX.value = constrained.x
@@ -785,5 +875,11 @@ onMounted(() => {
 
 .fade-loader-leave-to {
   opacity: 0;
+}
+
+/* Hardware acceleration for image containers */
+img {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 </style>
