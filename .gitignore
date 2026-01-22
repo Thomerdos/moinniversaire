@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Temporary extraction directory (local only)
+temp-extract/
+
+# ZIP source files (local processing only, not published)
+zip/
+!zip/.gitkeep
+
+# Images are COMMITTED after local processing
+# img/ - DO NOT IGNORE, optimized images are committed
+# public/photos/thumbs/ - DO NOT IGNORE, thumbnails are committed
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
