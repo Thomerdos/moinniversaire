@@ -5,9 +5,13 @@
   "description": "Application moderne pour vérifier si c'est le 18 du mois",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run generate-photos-json && vite build",
     "preview": "vite preview",
-    "optimize-images": "node scripts/optimize-images.js"
+    "extract-and-optimize": "node scripts/extract-and-optimize.js",
+    "reoptimize": "node scripts/reoptimize-images.js",
+    "generate-thumbs": "node scripts/generate-thumbnails.js",
+    "generate-photos-json": "node scripts/generate-photos-json.js",
+    "process-photos": "npm run extract-and-optimize && npm run generate-thumbs && npm run generate-photos-json"
   },
   "dependencies": {
     "@panzoom/panzoom": "^4.6.1",
@@ -19,6 +23,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
+    "extract-zip": "^2.0.1",
     "postcss": "^8.5.6",
     "sharp": "^0.34.5",
     "unocss": "^66.6.0",
