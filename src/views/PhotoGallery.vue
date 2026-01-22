@@ -285,10 +285,10 @@ const loadPhotos = async () => {
     
     for (const [album, filenames] of Object.entries(photosData)) {
       for (const filename of filenames) {
-        const promise = loadImageDimensions(`/moinniversaire/img/${album}/${filename}`).then(dimensions => ({
+        const promise = loadImageDimensions(`/moinniversaire/photos/${album}/${filename}`).then(dimensions => ({
           filename,
           album,
-          src: `/moinniversaire/img/${album}/${filename}`,
+          src: `/moinniversaire/photos/${album}/${filename}`,
           thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
           width: dimensions.width,
           height: dimensions.height
@@ -350,7 +350,7 @@ const loadPhotosManually = async () => {
         filename,
         album,
         src: `/moinniversaire/photos/${album}/${filename}`,
-        thumbnail: `/moinniversaire/photos/${album}/${filename}`,
+        thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
         width: 1920,
         height: 1440
       })
