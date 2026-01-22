@@ -511,8 +511,14 @@ const smoothPan = () => {
     return
   }
   
-  const deltaX = currentMouseX || currentTouchX - panStartX
-  const deltaY = currentMouseY || currentTouchY - panStartY
+  // Pour la souris: currentMouseX contient la position brute
+  // Pour le tactile: currentTouchX contient aussi la position brute
+  // Dans les deux cas, on calcule delta de la même manière
+  const currentX = currentMouseX || currentTouchX
+  const currentY = currentMouseY || currentTouchY
+  
+  const deltaX = currentX - panStartX
+  const deltaY = currentY - panStartY
   
   // Détecter si l'utilisateur a vraiment bougé (plus de 5px)
   if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
@@ -875,10 +881,5 @@ onMounted(() => {
 img {
   transform: translateZ(0);
   backface-visibility: hidden;
-}
-
-/* Smooth scrolling hints */
-* {
-  -webkit-overflow-scrolling: touch;
 }
 </style>
