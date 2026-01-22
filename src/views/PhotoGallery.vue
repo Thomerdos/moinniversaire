@@ -81,16 +81,16 @@
     <div
       v-if="!loading && photos.length > 0"
       class="w-full h-screen overflow-hidden select-none pt-24"
-      style="touch-action: none;"
+      style="touch-action: pan-x pan-y pinch-zoom;"
       :class="isPanning ? 'cursor-grabbing' : 'cursor-grab'"
       @mousedown="startPan"
       @mousemove="pan"
       @mouseup="endPan"
       @mouseleave="endPan"
       @wheel="handleWheel"
-      @touchstart.passive="handleTouchStart"
-      @touchmove.prevent="handleTouchMove"
-      @touchend.passive="handleTouchEnd"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
     >
       <div
         ref="mosaicContainer"
@@ -170,6 +170,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRafFn } from '@vueuse/core'
 import PhotoSwipe from 'photoswipe'
 import 'photoswipe/style.css'
 
@@ -187,11 +188,31 @@ const isPanning = ref(false)
 let panStartX = 0
 let panStartY = 0
 let hasMoved = false
-let animationFrameId = null
 const panStarted = ref(false)
 let currentMouseX = 0
 let currentMouseY = 0
-let isAnimating = false
+
+// Use VueUse's useRafFn for smooth animation loop
+const { pause: pauseAnimation, resume: resumeAnimation } = useRafFn(() => {
+  if (!isPanning.value) return
+  
+  // Use current position (mouse or touch)
+  const currentX = currentMouseX || currentTouchX
+  const currentY = currentMouseY || currentTouchY
+  
+  const deltaX = currentX - panStartX
+  const deltaY = currentY - panStartY
+  
+  // Detect if user has moved (more than 5px)
+  if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
+    hasMoved = true
+  }
+  
+  // Apply pan constraints
+  const constrained = constrainPan(deltaX, deltaY)
+  panX.value = constrained.x
+  panY.value = constrained.y
+}, { immediate: false })
 
 // Cache pour les calculs coûteux
 let cachedAvgColumnHeight = 0
@@ -503,39 +524,7 @@ const getPhotoIndex = (photo) => {
 }
 
 /**
- * Fonction d'animation continue pour un pan ultra-fluide (aussi pour touch)
- */
-const smoothPan = () => {
-  if (!isPanning.value) {
-    isAnimating = false
-    return
-  }
-  
-  // Pour la souris: currentMouseX contient la position brute
-  // Pour le tactile: currentTouchX contient aussi la position brute
-  // Dans les deux cas, on calcule delta de la même manière
-  const currentX = currentMouseX || currentTouchX
-  const currentY = currentMouseY || currentTouchY
-  
-  const deltaX = currentX - panStartX
-  const deltaY = currentY - panStartY
-  
-  // Détecter si l'utilisateur a vraiment bougé (plus de 5px)
-  if (Math.abs(deltaX - panX.value) > 5 || Math.abs(deltaY - panY.value) > 5) {
-    hasMoved = true
-  }
-  
-  // Appliquer les limites de pan
-  const constrained = constrainPan(deltaX, deltaY)
-  panX.value = constrained.x
-  panY.value = constrained.y
-  
-  // Continuer l'animation
-  animationFrameId = requestAnimationFrame(smoothPan)
-}
-
-/**
- * Pan handling avec distinction clic/drag et requestAnimationFrame pour fluidité maximale
+ * Pan handling with mouse - uses VueUse's useRafFn for smooth animation
  */
 const startPan = (e) => {
   if (e.button !== 0) return // Only left mouse button
@@ -547,14 +536,11 @@ const startPan = (e) => {
   currentMouseX = e.clientX
   currentMouseY = e.clientY
   
-  // Mettre à jour le cache des dimensions une seule fois au début
+  // Update dimension cache once at start
   updateDimensionsCache()
   
-  // Démarrer la boucle d'animation si elle n'est pas déjà active
-  if (!isAnimating) {
-    isAnimating = true
-    animationFrameId = requestAnimationFrame(smoothPan)
-  }
+  // Start animation loop
+  resumeAnimation()
   
   e.preventDefault()
 }
@@ -562,14 +548,13 @@ const startPan = (e) => {
 const pan = (e) => {
   if (!isPanning.value) return
   
-  // Mettre à jour seulement les coordonnées de la souris
-  // L'animation frame se chargera de l'application fluide
+  // Update mouse coordinates - animation loop handles the rest
   currentMouseX = e.clientX
   currentMouseY = e.clientY
 }
 
 /**
- * Mettre à jour le cache des dimensions (appelé une fois au début du pan)
+ * Update dimension cache (called once at pan start)
  */
 const updateDimensionsCache = () => {
   cachedScreenWidth = window.innerWidth
@@ -602,20 +587,15 @@ const constrainPan = (x, y) => {
 
 const endPan = () => {
   isPanning.value = false
-  isAnimating = false
-  // Annuler l'animation frame
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId)
-    animationFrameId = null
-  }
+  pauseAnimation()
 }
 
 /**
- * Touch support pour mobile avec pinch-to-zoom et animation fluide
+ * Touch support for mobile with pinch-to-zoom and smooth animation
  */
 const handleTouchStart = (e) => {
   if (e.touches.length === 1) {
-    // Un doigt: pan
+    // Single finger: pan
     isPanning.value = true
     panStarted.value = true
     hasMoved = false
@@ -624,22 +604,16 @@ const handleTouchStart = (e) => {
     currentTouchX = e.touches[0].clientX
     currentTouchY = e.touches[0].clientY
     
-    // Mettre à jour le cache des dimensions
+    // Update dimension cache
     updateDimensionsCache()
     
-    // Démarrer la boucle d'animation
-    if (!isAnimating) {
-      isAnimating = true
-      animationFrameId = requestAnimationFrame(smoothPan)
-    }
+    // Start animation loop
+    resumeAnimation()
   } else if (e.touches.length === 2) {
-    // Deux doigts: pinch-to-zoom
+    // Two fingers: pinch-to-zoom
     isPanning.value = false
-    isAnimating = false
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId)
-      animationFrameId = null
-    }
+    pauseAnimation()
+    
     const dx = e.touches[0].clientX - e.touches[1].clientX
     const dy = e.touches[0].clientY - e.touches[1].clientY
     touchStartDistance = Math.sqrt(dx * dx + dy * dy)
@@ -649,12 +623,12 @@ const handleTouchStart = (e) => {
 
 const handleTouchMove = (e) => {
   if (e.touches.length === 1 && isPanning.value) {
-    // Pan avec un doigt - mettre à jour les coordonnées
+    // Pan with one finger - update coordinates
     currentTouchX = e.touches[0].clientX
     currentTouchY = e.touches[0].clientY
     e.preventDefault()
   } else if (e.touches.length === 2) {
-    // Pinch-to-zoom avec deux doigts
+    // Pinch-to-zoom with two fingers
     const dx = e.touches[0].clientX - e.touches[1].clientX
     const dy = e.touches[0].clientY - e.touches[1].clientY
     const distance = Math.sqrt(dx * dx + dy * dy)
@@ -664,11 +638,11 @@ const handleTouchMove = (e) => {
       const oldZoom = zoomLevel.value
       zoomLevel.value = Math.max(minZoom.value, Math.min(4, oldZoom * scale))
       
-      // Centrer le zoom entre les deux doigts
+      // Center zoom between the two fingers
       const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2
       
-      // Mettre à jour le cache pour les nouveaux calculs
+      // Update cache for new calculations
       updateDimensionsCache()
       
       const rect = e.target.getBoundingClientRect()
@@ -679,7 +653,7 @@ const handleTouchMove = (e) => {
       let newPanX = centerX - rect.left - mouseX * zoomDiff
       let newPanY = centerY - rect.top - mouseY * zoomDiff
       
-      // Contraindre aux limites
+      // Constrain to limits
       const constrained = constrainPan(newPanX, newPanY)
       panX.value = constrained.x
       panY.value = constrained.y
@@ -693,25 +667,21 @@ const handleTouchMove = (e) => {
 }
 
 const handleTouchEnd = (e) => {
-  // Arrêter l'animation
+  // Stop animation
   isPanning.value = false
-  isAnimating = false
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId)
-    animationFrameId = null
-  }
+  pauseAnimation()
   
-  // Détecter double-tap pour zoom
+  // Detect double-tap for zoom
   const now = Date.now()
   if (now - lastTouchEnd < 300 && !hasMoved) {
-    // Double tap détecté: toggle zoom
+    // Double tap detected: toggle zoom
     if (zoomLevel.value > 1.5) {
-      // Dézoomer
+      // Zoom out
       zoomLevel.value = Math.max(1, minZoom.value)
       panX.value = 0
       panY.value = 0
     } else {
-      // Zoomer au point tapé
+      // Zoom in to tapped point
       const touch = e.changedTouches[0]
       const rect = e.target.getBoundingClientRect()
       const centerX = touch.clientX - rect.left
@@ -720,7 +690,7 @@ const handleTouchEnd = (e) => {
       const oldZoom = zoomLevel.value
       zoomLevel.value = 2.5
       
-      // Mettre à jour le cache pour les nouveaux calculs
+      // Update cache for new calculations
       updateDimensionsCache()
       
       const mouseX = centerX - panX.value
