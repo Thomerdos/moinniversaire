@@ -3,16 +3,29 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+let sharp;
+try {
+  sharp = (await import('sharp')).default;
+} catch (error) {
+  console.error('⚠️  Sharp n\'est pas disponible. Installation des dimensions par défaut.');
+  console.error('   Pour inclure les vraies dimensions, installez sharp: npm install sharp');
+  sharp = null;
+}
 
 const imgDir = path.join(__dirname, '..', 'public', 'photos');
 const albums = {};
 
 // Fonction pour obtenir les dimensions d'une image
 async function getImageDimensions(imagePath) {
+  if (!sharp) {
+    // Si sharp n'est pas disponible, retourner des dimensions par défaut
+    return { width: 1920, height: 1440 };
+  }
+  
   try {
     const metadata = await sharp(imagePath).metadata();
     return {

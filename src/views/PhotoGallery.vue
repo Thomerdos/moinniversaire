@@ -22,15 +22,15 @@
           <!-- Loading text - bigger -->
           <h2 class="text-4xl font-bold text-white mb-3 animate-pulse" style="animation-duration: 2s;">Chargement de la mosaïque</h2>
           <p class="text-xl text-gray-200 mb-12">
-            <span v-if="loadingTotal > 0">{{ loadingProgress }} / {{ loadingTotal }} images chargées</span>
+            <span v-if="loadingTotal > 0">Préparation de {{ loadingTotal }} images...</span>
             <span v-else>Préparation de vos souvenirs...</span>
           </p>
           
           <!-- Animated progress bar - bigger and more colorful -->
           <div class="w-80 h-3 bg-white/20 rounded-full overflow-hidden mx-auto shadow-lg">
             <div 
-              class="h-full bg-gradient-to-r from-purple-gradient-start via-pink-gradient-start to-purple-gradient-end transition-all duration-300" 
-              :style="{ width: loadingTotal > 0 ? `${(loadingProgress / loadingTotal) * 100}%` : '65%' }"
+              class="h-full bg-gradient-to-r from-purple-gradient-start via-pink-gradient-start to-purple-gradient-end animate-pulse transition-all duration-300" 
+              style="width: 65%; animation-duration: 1s;"
             ></div>
           </div>
           
@@ -174,7 +174,6 @@ import 'photoswipe/style.css'
 const loading = ref(true)
 const photos = ref([])
 const mosaicContainer = ref(null)
-const loadingProgress = ref(0)
 const loadingTotal = ref(0)
 const loadingErrors = ref([])
 
@@ -298,7 +297,6 @@ const columns = computed(() => {
 const loadPhotos = async () => {
   try {
     loading.value = true
-    loadingProgress.value = 0
     loadingErrors.value = []
     
     // Charger la liste des images depuis le JSON
@@ -313,7 +311,7 @@ const loadPhotos = async () => {
     
     const allPhotos = []
     
-    // Compter le nombre total d'images pour la barre de progression
+    // Compter le nombre total d'images
     loadingTotal.value = Object.values(photosData).reduce((sum, album) => sum + album.length, 0)
     
     // Créer les objets photo avec les dimensions depuis le JSON
@@ -332,8 +330,6 @@ const loadPhotos = async () => {
           width,
           height
         })
-        
-        loadingProgress.value++
       }
     }
     
