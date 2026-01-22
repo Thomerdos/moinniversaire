@@ -80,8 +80,7 @@
     <!-- Gallery mosaic with pan & zoom -->
     <div
       v-if="!loading && photos.length > 0"
-      class="w-full h-screen overflow-hidden select-none pt-24"
-      style="touch-action: pan-x pan-y pinch-zoom;"
+      class="w-full h-screen overflow-hidden select-none pt-24 pan-zoom-container"
       :class="isPanning ? 'cursor-grabbing' : 'cursor-grab'"
       @mousedown="startPan"
       @mousemove="pan"
@@ -309,6 +308,11 @@ onMounted(async () => {
 
 .fade-loader-leave-to {
   opacity: 0;
+}
+
+/* Pan & zoom container with proper touch handling */
+.pan-zoom-container {
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 /* Hardware acceleration for image containers */

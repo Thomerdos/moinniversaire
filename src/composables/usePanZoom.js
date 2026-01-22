@@ -24,10 +24,10 @@ export function usePanZoom(options = {}) {
   let panStartX = 0
   let panStartY = 0
   let hasMoved = false
-  let currentMouseX = 0
-  let currentMouseY = 0
-  let currentTouchX = 0
-  let currentTouchY = 0
+  let currentMouseX = null // null means no mouse input
+  let currentMouseY = null
+  let currentTouchX = null // null means no touch input
+  let currentTouchY = null
   let touchStartX = 0
   let touchStartY = 0
   let touchStartDistance = 0
@@ -43,9 +43,10 @@ export function usePanZoom(options = {}) {
   const { pause: pauseAnimation, resume: resumeAnimation } = useRafFn(() => {
     if (!isPanning.value) return
     
-    // Use current position (mouse or touch) - use nullish coalescing to handle 0 correctly
-    const currentX = currentMouseX ?? currentTouchX
-    const currentY = currentMouseY ?? currentTouchY
+    // Use current position - prioritize the active input method
+    // Mouse input takes precedence if available (not null)
+    const currentX = currentMouseX !== null ? currentMouseX : (currentTouchX ?? 0)
+    const currentY = currentMouseY !== null ? currentMouseY : (currentTouchY ?? 0)
     
     const deltaX = currentX - panStartX
     const deltaY = currentY - panStartY
@@ -155,13 +156,13 @@ export function usePanZoom(options = {}) {
       currentTouchX = e.touches[0].clientX
       currentTouchY = e.touches[0].clientY
       e.preventDefault()
-    } else if (e.touches.length === 2) {
-      // Pinch-to-zoom with two fingers
+    } else if (e.touches.length === 2 && cachedTouchRect) {
+      // Pinch-to-zoom with two fingers - only if we have a valid cached rect
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
       const distance = Math.sqrt(dx * dx + dy * dy)
       
-      if (touchStartDistance > 0 && cachedTouchRect) {
+      if (touchStartDistance > 0) {
         const scale = distance / touchStartDistance
         const oldZoom = zoomLevel.value
         zoomLevel.value = Math.max(minZoom, Math.min(maxZoom, oldZoom * scale))
