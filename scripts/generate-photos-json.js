@@ -13,7 +13,7 @@ const albums = {};
 // Lire tous les dossiers d'albums
 fs.readdirSync(imgDir).forEach(album => {
   const albumPath = path.join(imgDir, album);
-  if (fs.statSync(albumPath).isDirectory() && album !== '.gitkeep') {
+  if (fs.statSync(albumPath).isDirectory() && album !== '.gitkeep' && album !== 'thumbs') {
     albums[album] = fs.readdirSync(albumPath)
       .filter(file => file.endsWith('.webp'))
       .sort();
