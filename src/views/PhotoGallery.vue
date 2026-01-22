@@ -196,9 +196,9 @@ let currentMouseY = 0
 const { pause: pauseAnimation, resume: resumeAnimation } = useRafFn(() => {
   if (!isPanning.value) return
   
-  // Use current position (mouse or touch)
-  const currentX = currentMouseX || currentTouchX
-  const currentY = currentMouseY || currentTouchY
+  // Use current position (mouse or touch) - use nullish coalescing to handle 0 correctly
+  const currentX = currentMouseX ?? currentTouchX
+  const currentY = currentMouseY ?? currentTouchY
   
   const deltaX = currentX - panStartX
   const deltaY = currentY - panStartY
@@ -645,7 +645,7 @@ const handleTouchMove = (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY
     const distance = Math.sqrt(dx * dx + dy * dy)
     
-    if (touchStartDistance > 0) {
+    if (touchStartDistance > 0 && cachedTouchRect) {
       const scale = distance / touchStartDistance
       const oldZoom = zoomLevel.value
       zoomLevel.value = Math.max(minZoom.value, Math.min(4, oldZoom * scale))
@@ -658,7 +658,7 @@ const handleTouchMove = (e) => {
       updateDimensionsCache()
       
       // Use cached rect for better performance
-      const rect = cachedTouchRect || e.currentTarget.getBoundingClientRect()
+      const rect = cachedTouchRect
       const mouseX = centerX - rect.left - panX.value
       const mouseY = centerY - rect.top - panY.value
       
@@ -809,12 +809,9 @@ const centerMosaic = () => {
   const screenWidth = window.innerWidth
   const mosaicWidth = totalMosaicWidth.value * zoomLevel.value
   
-  // Center horizontally
-  if (mosaicWidth > screenWidth) {
-    panX.value = (screenWidth - mosaicWidth) / 2
-  } else {
-    panX.value = 0
-  }
+  // Center horizontally - the mosaic is always larger than screen
+  // We want to show the center of the mosaic, so panX should be negative
+  panX.value = (screenWidth - mosaicWidth) / 2
   
   // Keep Y at top (below header)
   panY.value = 0
