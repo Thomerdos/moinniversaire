@@ -41,7 +41,7 @@
       <div class="boulettes-jour-gif">
         <div class="gif-container bg-mafia-dark/95 rounded-[30px] shadow-2xl border-4 border-mafia-gold p-4">
           <img 
-            src="/sopranos-pasta.gif" 
+            :src="sopranoGifUrl" 
             alt="Tony Soprano eating pasta"
             class="soprano-gif rounded-lg"
           />
@@ -68,6 +68,9 @@ const dateInfo = computed(() => {
   const prefix = isTestMode.value ? 'Mode test : ' : 'Nous sommes le '
   return `${prefix}${day.value} ${monthName.value} ${year.value}`
 })
+
+// URL du GIF avec base path dynamique
+const sopranoGifUrl = computed(() => `${import.meta.env.BASE_URL}sopranos-pasta.gif`)
 
 const daysUntilNext3January = computed(() => {
   const currentYear = year.value

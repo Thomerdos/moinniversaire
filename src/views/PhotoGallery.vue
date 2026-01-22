@@ -21,12 +21,17 @@
           
           <!-- Loading text - bigger -->
           <h2 class="text-4xl font-bold text-white mb-3 animate-pulse" style="animation-duration: 2s;">Chargement de la mosaïque</h2>
-          <p class="text-xl text-gray-200 mb-12">Préparation de vos souvenirs...</p>
+          <p class="text-xl text-gray-200 mb-12">
+            <span v-if="loadingTotal > 0">Préparation de {{ loadingTotal }} images...</span>
+            <span v-else>Préparation de vos souvenirs...</span>
+          </p>
           
           <!-- Animated progress bar - bigger and more colorful -->
           <div class="w-80 h-3 bg-white/20 rounded-full overflow-hidden mx-auto shadow-lg">
-            <div class="h-full bg-gradient-to-r from-purple-gradient-start via-pink-gradient-start to-purple-gradient-end animate-pulse" style="width: 65%; animation-duration: 1s;"></div>
-            <div class="h-full bg-gradient-to-r from-purple-gradient-start to-pink-gradient-start absolute inset-0 animate-ping" style="width: 80%; animation-duration: 1.5s; opacity: 0.3;"></div>
+            <div 
+              class="h-full bg-gradient-to-r from-purple-gradient-start via-pink-gradient-start to-purple-gradient-end animate-pulse transition-all duration-300" 
+              style="width: 65%; animation-duration: 1s;"
+            ></div>
           </div>
           
           <!-- Dots animation below -->
@@ -118,6 +123,7 @@
                 class="w-full h-full object-cover object-center"
                 loading="lazy"
                 draggable="false"
+                @error="handleImageError($event, photo)"
               />
               <!-- Overlay on hover -->
               <div class="absolute inset-0 bg-gradient-to-t from-black/60 from-0% via-transparent via-50% to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-1.5">
@@ -135,10 +141,26 @@
     </div>
 
     <!-- Empty state -->
-    <div v-else class="flex items-center justify-center min-h-screen">
-      <div class="text-center">
-        <div class="text-6xl mb-4">📸</div>
-        <p class="text-lg text-white">Aucune photo disponible</p>
+    <div v-else-if="!loading" class="flex items-center justify-center min-h-screen p-8">
+      <div class="text-center max-w-md">
+        <div class="text-6xl mb-4">
+          {{ loadingErrors.length > 0 ? '⚠️' : '📸' }}
+        </div>
+        <p class="text-lg text-white mb-4">
+          {{ loadingErrors.length > 0 ? 'Erreur de chargement' : 'Aucune photo disponible' }}
+        </p>
+        <div v-if="loadingErrors.length > 0" class="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-sm text-white text-left">
+          <p class="font-semibold mb-2">Détails de l'erreur :</p>
+          <ul class="list-disc list-inside space-y-1">
+            <li v-for="(error, index) in loadingErrors" :key="index">{{ error }}</li>
+          </ul>
+          <button 
+            @click="loadPhotos" 
+            class="mt-4 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors duration-200 w-full"
+          >
+            🔄 Réessayer
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -152,6 +174,8 @@ import 'photoswipe/style.css'
 const loading = ref(true)
 const photos = ref([])
 const mosaicContainer = ref(null)
+const loadingTotal = ref(0)
+const loadingErrors = ref([])
 
 // Pan & Zoom state
 const panX = ref(0)
@@ -273,91 +297,150 @@ const columns = computed(() => {
 const loadPhotos = async () => {
   try {
     loading.value = true
+    loadingErrors.value = []
     
     // Charger la liste des images depuis le JSON
-    const response = await fetch('/moinniversaire/photos/photos-data.json')
+    const baseUrl = import.meta.env.BASE_URL
+    const response = await fetch(`${baseUrl}photos/photos-data.json`)
+    
+    if (!response.ok) {
+      throw new Error(`Impossible de charger la liste des photos: ${response.status}`)
+    }
+    
     const photosData = await response.json()
     
     const allPhotos = []
     
-    // Créer les promesses de chargement pour toutes les images
-    const photoPromises = []
+    // Compter le nombre total d'images
+    loadingTotal.value = Object.values(photosData).reduce((sum, album) => sum + album.length, 0)
     
-    for (const [album, filenames] of Object.entries(photosData)) {
-      for (const filename of filenames) {
-        const promise = loadImageDimensions(`/moinniversaire/photos/${album}/${filename}`).then(dimensions => ({
+    // Créer les objets photo avec les dimensions depuis le JSON
+    for (const [album, photoList] of Object.entries(photosData)) {
+      for (const photoData of photoList) {
+        // Gérer les deux formats: ancien (string) et nouveau (objet avec dimensions)
+        const filename = typeof photoData === 'string' ? photoData : photoData.filename
+        const width = typeof photoData === 'string' ? 1920 : photoData.width
+        const height = typeof photoData === 'string' ? 1440 : photoData.height
+        
+        allPhotos.push({
           filename,
           album,
-          src: `/moinniversaire/photos/${album}/${filename}`,
-          thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
-          width: dimensions.width,
-          height: dimensions.height
-        }))
-        photoPromises.push(promise)
+          src: `${baseUrl}photos/${album}/${filename}`,
+          thumbnail: `${baseUrl}photos/thumbs/${album}/${filename}`,
+          width,
+          height
+        })
       }
     }
     
-    // Attendre que toutes les images soient chargées en parallèle
-    const loadedPhotos = await Promise.all(photoPromises)
-    photos.value = loadedPhotos
+    // Valider que les images existent en chargeant les miniatures avec timeout
+    await validateThumbnails(allPhotos)
+    
+    photos.value = allPhotos
   } catch (error) {
     console.error('Erreur lors du chargement des photos:', error)
-    loadPhotosManually()
+    // Afficher l'erreur à l'utilisateur
+    if (loadingErrors.value.length === 0) {
+      loadingErrors.value.push(`Erreur: ${error.message}`)
+    }
+    // Fallback: essayer de charger manuellement après un délai
+    setTimeout(() => {
+      if (photos.value.length === 0) {
+        loadPhotosManually()
+      }
+    }, 2000)
   } finally {
     loading.value = false
   }
 }
 
 /**
- * Charger les dimensions réelles d'une image
+ * Valider que les miniatures existent en chargeant quelques-unes
+ * (ne charge pas toutes pour éviter de surcharger le navigateur)
  */
-const loadImageDimensions = (src) => {
-  return new Promise((resolve) => {
+const validateThumbnails = async (photoList) => {
+  // Valider un échantillon aléatoire de miniatures
+  const sampleSize = Math.min(10, photoList.length)
+  const samples = []
+  
+  for (let i = 0; i < sampleSize; i++) {
+    const randomIndex = Math.floor(Math.random() * photoList.length)
+    samples.push(photoList[randomIndex])
+  }
+  
+  const validationPromises = samples.map(photo => 
+    validateImage(photo.thumbnail, 3000) // timeout de 3 secondes
+  )
+  
+  try {
+    await Promise.allSettled(validationPromises)
+  } catch (error) {
+    console.warn('Certaines miniatures n\'ont pas pu être validées:', error)
+  }
+}
+
+/**
+ * Valider qu'une image peut être chargée avec timeout
+ */
+const validateImage = (src, timeout = 3000) => {
+  return new Promise((resolve, reject) => {
     const img = new Image()
+    const timer = setTimeout(() => {
+      img.src = '' // Annuler le chargement
+      reject(new Error(`Timeout lors du chargement de ${src}`))
+    }, timeout)
+    
     img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      clearTimeout(timer)
+      resolve()
     }
+    
     img.onerror = () => {
-      // Dimensions par défaut en cas d'erreur
-      resolve({ width: 1920, height: 1440 })
+      clearTimeout(timer)
+      reject(new Error(`Erreur lors du chargement de ${src}`))
     }
+    
     img.src = src
   })
 }
 
 /**
  * Fallback: charger les images manuellement si JSON indisponible
+ * Cette fonction est maintenant simplifiée car les dimensions sont dans le JSON
  */
 const loadPhotosManually = async () => {
-  const albumsData = {
-    'chatons-en-montagne-partie-1': [
-      '20250920_142201.webp',
-      '20250920_142418.webp',
-      '20250922_190234__1_.webp',
-      '20250922_190317.webp'
-      // À compléter avec tous les fichiers...
-    ],
-    'chatons-en-montagne-partie-2': [],
-    'chatons-en-montagne-partie-3': [],
-    'chatons-en-montagne-partie-4': [],
-    'vacances-et-bretonnie-chapter-1': []
-  }
+  console.warn('Fallback: Tentative de chargement manuel des photos')
+  const baseUrl = import.meta.env.BASE_URL
   
-  const allPhotos = []
-  for (const [album, filenames] of Object.entries(albumsData)) {
-    filenames.forEach(filename => {
-      allPhotos.push({
-        filename,
-        album,
-        src: `/moinniversaire/photos/${album}/${filename}`,
-        thumbnail: `/moinniversaire/photos/thumbs/${album}/${filename}`,
-        width: 1920,
-        height: 1440
-      })
-    })
+  // Essayer de recharger le JSON une dernière fois
+  try {
+    const response = await fetch(`${baseUrl}photos/photos-data.json`)
+    const photosData = await response.json()
+    
+    const allPhotos = []
+    for (const [album, photoList] of Object.entries(photosData)) {
+      for (const photoData of photoList) {
+        const filename = typeof photoData === 'string' ? photoData : photoData.filename
+        const width = typeof photoData === 'string' ? 1920 : photoData.width
+        const height = typeof photoData === 'string' ? 1440 : photoData.height
+        
+        allPhotos.push({
+          filename,
+          album,
+          src: `${baseUrl}photos/${album}/${filename}`,
+          thumbnail: `${baseUrl}photos/thumbs/${album}/${filename}`,
+          width,
+          height
+        })
+      }
+    }
+    
+    photos.value = allPhotos
+    console.log('✅ Fallback réussi: photos chargées')
+  } catch (error) {
+    console.error('❌ Fallback échoué:', error)
+    photos.value = [] // Afficher l'état vide
   }
-  
-  photos.value = allPhotos
 }
 
 /**
@@ -368,6 +451,34 @@ const formatAlbumName = (album) => {
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+/**
+ * Handle image loading errors
+ */
+const handleImageError = (event, photo) => {
+  const img = event.target
+  
+  // Éviter les boucles infinies
+  if (img.dataset.errorHandled) return
+  img.dataset.errorHandled = 'true'
+  
+  // Remplacer par une couleur de fond et un emoji
+  img.style.display = 'none'
+  const parent = img.parentElement
+  if (parent) {
+    parent.style.backgroundColor = '#e5e7eb'
+    parent.style.display = 'flex'
+    parent.style.alignItems = 'center'
+    parent.style.justifyContent = 'center'
+    
+    const placeholder = document.createElement('div')
+    placeholder.className = 'text-4xl'
+    placeholder.textContent = '🖼️'
+    parent.appendChild(placeholder)
+  }
+  
+  console.warn(`Impossible de charger l'image: ${photo.thumbnail}`)
 }
 
 /**
